@@ -98,35 +98,10 @@ pub type MoveToVisit =
 pub type VisitedCoords =
   Set(Movement)
 
-fn trace_beam(
-  d: Dict(Coord, Space),
-  move: Movement,
-  visited: VisitedCoords,
-) -> #(VisitedCoords, MoveToVisit) {
-  // io.debug(move)
-
-  let #(coords, _direction) = move
-  let maybe_space = dict.get(d, coords)
-  let have_visited = set.contains(visited, move)
-
-  case have_visited, maybe_space {
-    _, Error(_) | True, _ -> #(visited, [])
-    False, Ok(space) -> {
-      calc_next_movements(move, space)
-      |> list.map(trace_beam(d, _, set.insert(visited, move)))
-      |> list.fold(#(set.new(), []), fn(entry, acc) {
-        let #(acc_vis, acc_moves) = acc
-        let #(entry_vis, entry_moves) = entry
-
-        #(set.union(acc_vis, entry_vis), list.concat([entry_moves, acc_moves]))
-      })
-    }
-  }
-}
-
-fn trace_beam2(d: Dict(Coord, Space)) -> VisitedCoords {
+// Should return all moves made by tracing the beam
+fn trace_beam(start: Movement, d: Dict(Coord, Space)) -> VisitedCoords {
   #(
-    [#(#(0, 0), Right)],
+    [start],
     // next moves
     set.new(),
     // visited
@@ -151,14 +126,18 @@ fn trace_beam2(d: Dict(Coord, Space)) -> VisitedCoords {
     case list.is_empty(next_moves) {
       True -> iterator.Done
       False ->
-        iterator.Next(element: visited, accumulator: #(
+        iterator.Next(element: next_moves, accumulator: #(
           next_moves,
           set.union(visited, set.from_list(moves)),
         ))
     }
   })
   // |> iterator.map(io.debug)
-  |> iterator.fold(set.new(), fn(a, b) { set.union(a, b) })
+  // |> iterator.fold(set.new(), fn(a, b) { set.union(a, b) })
+  |> iterator.to_list
+  |> list.flatten
+  |> list.prepend(start)
+  |> set.from_list
 }
 
 fn draw_grid(height: Int, width: Int, visited: Set(Coord)) -> Set(Coord) {
@@ -181,6 +160,24 @@ fn draw_grid(height: Int, width: Int, visited: Set(Coord)) -> Set(Coord) {
   visited
 }
 
+type Grid =
+  Dict(Coord, Space)
+
+type Roots =
+  Dict(
+    Movement,
+    #(
+      Set(Movement),
+      Int,
+      // score - count of energized tiles
+    ),
+  )
+
+// fn trace_beam_with_roots(start: Movement, grid: Grid, roots: Roots) -> #(Grid, Roots) {
+//   [start]
+//   |>
+// }
+
 pub fn pt_1(input: String) {
   let d =
     input
@@ -194,7 +191,7 @@ pub fn pt_1(input: String) {
 
   let s =
     d
-    |> trace_beam2
+    |> trace_beam(#(#(0, 0), Right), _)
     |> set.map(fn(x) { x.0 })
 
   s
@@ -209,5 +206,54 @@ pub fn pt_1(input: String) {
 }
 
 pub fn pt_2(input: String) {
-  todo as "part 2 not implemented"
+  let d =
+    input
+    |> parse_input
+
+  let #(height, width) =
+    d
+    |> dict.keys
+    |> list.fold(#(0, 0), fn(a, b) { #(int.max(a.0, b.0), int.max(a.1, b.1)) })
+
+  // smart thing to do would be keeping track of the root of the distinct paths, and merging/growing the path
+  // when we encounter a move which has been made already. Then we can just compare the sizes of the distinct paths.
+  // But this works quick enough, 1 or 2 seconds
+  let start_moves =
+    [
+      list.range(0, width) |> list.map(fn(x) { #(#(0, x), Down) }),
+      list.range(0, width) |> list.map(fn(x) { #(#(height, x), Up) }),
+      list.range(0, height) |> list.map(fn(y) { #(#(y, 0), Right) }),
+      list.range(0, height) |> list.map(fn(y) { #(#(y, width), Left) }),
+    ]
+    |> list.flatten
+  // |> list.map(io.debug)
+
+  let #(path, max) =
+    start_moves
+    |> list.map(fn(start) {
+      let s =
+        trace_beam(start, d)
+        |> set.map(fn(x) { x.0 })
+        |> set.to_list
+        |> list.filter(fn(coord) {
+          coord.0 >= 0 && coord.1 >= 0 && coord.0 <= height && coord.1 <= width
+        })
+        |> set.from_list
+
+      #(s, set.size(s))
+    })
+    |> list.fold(#(set.new(), -1), fn(acc, entry) {
+      let #(curr_path, curr_size) = entry
+      let #(max_path, max_size) = acc
+
+      case curr_size > max_size {
+        True -> entry
+        False -> acc
+      }
+    })
+
+  // path
+  // |> draw_grid(height, width, _)
+
+  max
 }
