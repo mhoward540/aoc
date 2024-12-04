@@ -2,64 +2,18 @@ import gleam/dict.{type Dict}
 import gleam/iterator
 import gleam/list
 import gleam/string
+import aoc_util/gridutil.{type GridS, type Coord}
 
-pub type Coord =
-  #(Int, Int)
-
-pub type Matrix =
-  Dict(Coord, String)
-
-pub type Grid {
-  Grid(matrix: Matrix, height: Int, width: Int)
-}
-
-fn parse_input(input: String) -> Grid {
-  let matrix_l =
-    input
-    |> string.split("\n")
-    |> list.index_map(fn(line, y) {
-      line
-      |> string.split("")
-      |> list.index_map(fn(char, x) { #(#(y, x), char) })
-    })
-    |> list.flatten
-
-  let assert Ok(#(#(height, width), _)) = list.last(matrix_l)
-  let matrix = matrix_l |> dict.from_list
-  Grid(matrix: matrix, height: height + 1, width: width + 1)
-}
-
-fn get_rows(grid: Grid) -> List(String) {
-  list.range(0, grid.height - 1)
-  |> list.map(fn(y) {
-    list.range(0, grid.width - 1)
-    |> list.map(fn(x) {
-      let coord = #(y, x)
-      let assert Ok(c) = dict.get(grid.matrix, coord)
-      c
-    })
-    |> string.join("")
-  })
-}
-
-fn get_cols(grid: Grid) -> List(String) {
-  list.range(0, grid.width - 1)
-  |> list.map(fn(x) {
-    list.range(0, grid.height - 1)
-    |> list.map(fn(y) {
-      let coord = #(y, x)
-      let assert Ok(c) = dict.get(grid.matrix, coord)
-      c
-    })
-    |> string.join("")
-  })
+fn parse_input(input: String) -> GridS {
+  input
+  |> gridutil.to_grid
 }
 
 // start from top left and go diagonally down-right
-fn get_diag_right(grid: Grid, start_y: Int, start_x: Int) -> String {
+fn get_diag_right(grid: GridS, start_y: Int, start_x: Int) -> String {
   iterator.unfold(#(start_y, start_x), fn(next_coord) {
     let #(next_y, next_x) = next_coord
-    case next_y > grid.height - 1, next_x > grid.width - 1 {
+    case next_y > grid.max_y, next_x > grid.max_x {
       False, False -> iterator.Next(next_coord, #(next_y + 1, next_x + 1))
       _, _ -> iterator.Done
     }
@@ -73,10 +27,10 @@ fn get_diag_right(grid: Grid, start_y: Int, start_x: Int) -> String {
 }
 
 // start from top right and go diagonally down-left
-fn get_diag_left(grid: Grid, start_y: Int, start_x: Int) -> String {
+fn get_diag_left(grid: GridS, start_y: Int, start_x: Int) -> String {
   iterator.unfold(#(start_y, start_x), fn(next_coord) {
     let #(next_y, next_x) = next_coord
-    case next_y > grid.height - 1, next_x < 0 {
+    case next_y > grid.max_y, next_x < 0 {
       False, False -> iterator.Next(next_coord, #(next_y + 1, next_x - 1))
       _, _ -> iterator.Done
     }
@@ -90,8 +44,8 @@ fn get_diag_left(grid: Grid, start_y: Int, start_x: Int) -> String {
 }
 
 // This assumes a square grid
-fn get_diags_right(grid: Grid) -> List(String) {
-  list.range(0, grid.height - 1)
+fn get_diags_right(grid: GridS) -> List(String) {
+  list.range(0, grid.max_y)
   |> list.map(fn(y) {
     case y == 0 {
       True -> [get_diag_right(grid, 0, 0)]
@@ -102,15 +56,15 @@ fn get_diags_right(grid: Grid) -> List(String) {
 }
 
 // This assumes a square grid
-fn get_diags_left(grid: Grid) -> List(String) {
-  list.range(0, grid.height - 1)
+fn get_diags_left(grid: GridS) -> List(String) {
+  list.range(0, grid.max_y)
   |> list.map(fn(i) {
     case i == 0 {
-      True -> [get_diag_left(grid, 0, grid.width - 1)]
+      True -> [get_diag_left(grid, 0, grid.max_x)]
       False -> {
         [
-          get_diag_left(grid, i, grid.width - 1),
-          get_diag_left(grid, 0, grid.height - i - 1),
+          get_diag_left(grid, i, grid.max_x),
+          get_diag_left(grid, 0, grid.max_y - i),
         ]
       }
     }
@@ -128,7 +82,7 @@ fn get_sublines(line: String) -> List(String) {
   |> iterator.to_list
 }
 
-fn solve_crossword(grid: Grid, words: List(String)) -> Int {
+fn solve_crossword(grid: GridS, words: List(String)) -> Int {
   let words =
     words
     |> list.map(fn(word) { [word, string.reverse(word)] })
@@ -136,8 +90,8 @@ fn solve_crossword(grid: Grid, words: List(String)) -> Int {
 
   // Get the full lines of the crossword
   // The entirety of each row, column, and diagonal
-  let rows = get_rows(grid)
-  let cols = get_cols(grid)
+  let rows = gridutil.get_rows_joined(grid)
+  let cols = gridutil.get_cols_joined(grid)
   let diag_right = get_diags_right(grid)
   let diag_left = get_diags_left(grid)
 
@@ -163,12 +117,12 @@ type MasCoords {
   MasCoords(tl: Coord, tr: Coord, mid: Coord, bl: Coord, br: Coord)
 }
 
-fn is_valid_entry(grid: Grid, m: MasCoords) -> Bool {
+fn is_valid_entry(grid: GridS, m: MasCoords) -> Bool {
   let is_invalid =
     [m.tl, m.tr, m.mid, m.bl, m.br]
     |> list.map(fn(coord) {
       let #(y, x) = coord
-      y < 0 || x < 0 || y >= grid.height || x >= grid.width
+      y < 0 || x < 0 || y >= grid.max_y + 1 || x >= grid.max_x + 1
     })
     |> list.any(fn(x) { x })
 
@@ -203,7 +157,7 @@ fn get_mas_coords_for_entry(c: Coord) -> MasCoords {
 // S S
 //  A
 // M M
-fn is_a_mas_x(me: MasCoords, grid: Grid) -> Bool {
+fn is_a_mas_x(me: MasCoords, grid: GridS) -> Bool {
   let assert Ok(tl) = dict.get(grid.matrix, me.tl)
   let assert Ok(tr) = dict.get(grid.matrix, me.tr)
   let assert Ok(mid) = dict.get(grid.matrix, me.mid)
@@ -218,10 +172,10 @@ fn is_a_mas_x(me: MasCoords, grid: Grid) -> Bool {
   }
 }
 
-fn get_mas_coords(grid: Grid) -> List(MasCoords) {
-  list.range(0, grid.height - 1)
+fn get_mas_coords(grid: GridS) -> List(MasCoords) {
+  list.range(0, grid.max_y)
   |> list.map(fn(y) {
-    list.range(0, grid.width - 1)
+    list.range(0, grid.max_x)
     |> list.map(fn(x) { get_mas_coords_for_entry(#(y, x)) })
   })
   |> list.flatten
@@ -229,7 +183,7 @@ fn get_mas_coords(grid: Grid) -> List(MasCoords) {
   |> list.filter(is_valid_entry(grid, _))
 }
 
-fn find_mas(grid: Grid) -> Int {
+fn find_mas(grid: GridS) -> Int {
   get_mas_coords(grid)
   |> list.filter(is_a_mas_x(_, grid))
   |> list.length
