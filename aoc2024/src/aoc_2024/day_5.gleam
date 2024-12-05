@@ -1,12 +1,9 @@
 import gleam/bool
 import gleam/dict.{type Dict}
 import gleam/int
-import gleam/io
 import gleam/iterator
 import gleam/list
 import gleam/option
-import gleam/result
-import gleam/set.{type Set}
 import gleam/string
 
 type Placement {
@@ -66,12 +63,10 @@ fn parse_input(input: String) -> #(PageOrdering, List(List(Int))) {
   let po =
     page_ordering
     |> parse_page_orderings
-  // |> io.debug
 
   let u =
     updates
     |> parse_updates
-  // |> io.debug
 
   #(po, u)
 }
@@ -88,10 +83,6 @@ fn check_rule(
 
   rules
   |> list.map(fn(rule) {
-    // io.debug(rule)
-    // io.debug(before)
-    // io.debug(after)
-    // io.debug("")
     case rule {
       PageOrderingRule(_s, Before, o) ->
         list.contains(after, o) || !list.contains(full_list, o)
@@ -126,12 +117,16 @@ fn check_rules(po: PageOrdering, updates: List(Int)) -> Bool {
   result
 }
 
-fn check_ordering(po: PageOrdering, updates: List(List(Int))) -> List(List(Int)) {
+fn check_ordering(
+  po: PageOrdering,
+  updates: List(List(Int)),
+) -> #(List(List(Int)), List(List(Int))) {
   updates
-  |> list.fold([], fn(acc, l) {
+  |> list.fold(#([], []), fn(acc, l) {
+    let #(accept, rej) = acc
     case check_rules(po, l) {
-      False -> acc
-      True -> [l, ..acc]
+      False -> #(accept, [l, ..rej])
+      True -> #([l, ..accept], rej)
     }
   })
 }
@@ -146,18 +141,56 @@ fn get_middle(l: List(Int)) -> Int {
   res
 }
 
+fn correct_updates(po: PageOrdering, updates: List(Int)) -> List(Int) {
+  updates
+  |> list.map(fn(update) {
+    let assert Ok(l) = dict.get(po, update)
+    // Get all items, from this list of updates, which come after the current update
+    let afters =
+      list.filter(l, fn(rule) {
+        case rule, list.contains(updates, rule.other) {
+          PageOrderingRule(_, After, _), True -> True
+          _, _ -> False
+        }
+      })
+
+    #(update, list.length(afters))
+  })
+  |> list.sort(fn(a, b) {
+    // Sort by how many items come after a given item
+    int.compare(a.1, b.1)
+  })
+  |> list.map(fn(a) { a.0 })
+}
+
+fn correct_ordering(
+  po: PageOrdering,
+  updates: List(List(Int)),
+) -> List(List(Int)) {
+  updates
+  |> list.map(correct_updates(po, _))
+}
+
 pub fn pt_1(input: String) {
   let #(po, updates) =
     input
     |> parse_input
 
-  check_ordering(po, updates)
-  // |> io.debug
+  let #(accept, _) = check_ordering(po, updates)
+
+  accept
   |> list.map(get_middle)
-  // |> io.debug
   |> int.sum
 }
 
 pub fn pt_2(input: String) {
-  todo as "part 2 not implemented"
+  let #(po, updates) =
+    input
+    |> parse_input
+
+  let #(_accept, reject) = check_ordering(po, updates)
+
+  correct_ordering(po, reject)
+  |> list.map(get_middle)
+  |> int.sum
 }
