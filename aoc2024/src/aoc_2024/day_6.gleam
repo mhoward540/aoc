@@ -45,7 +45,7 @@ fn parse_input(input: String) -> #(GridS, Librarian) {
   let start_coord =
     grid
     |> gridutil.iter_grid
-    |> iterator.fold_until(#(-1, -1), fn(acc, entry) {
+    |> iterator.fold_until(#(-1, -1), fn(_acc, entry) {
       let #(coord, v) = entry
       case v {
         "^" -> list.Stop(coord)
@@ -54,31 +54,6 @@ fn parse_input(input: String) -> #(GridS, Librarian) {
     })
 
   #(grid, Librarian(start_coord, Up))
-}
-
-
-// TODO this is probably faster than recursion - rewrite to use this?
-fn map_covered_area(grid: GridS, l: Librarian) -> Set(Coord) {
-  let visited_coords =
-    iterator.unfold(l, fn(lib) {
-      let next_coord = move(lib.location, lib.direction) |> io.debug
-      let next_space = dict.get(grid.matrix, next_coord)
-
-      case next_space {
-        Ok("#") ->
-          iterator.Next(
-            lib.location,
-            Librarian(lib.location, turn_90(lib.direction)),
-          )
-        Ok(_) ->
-          iterator.Next(lib.location, Librarian(next_coord, lib.direction))
-        _ -> iterator.Done
-      }
-    })
-
-  visited_coords
-  |> iterator.to_list
-  |> set.from_list
 }
 
 fn visit(
@@ -92,19 +67,10 @@ fn visit(
   let next_space = dict.get(grid.matrix, next_coord)
   case next_space {
     Ok("#") ->
-      visit(
-        grid,
-        Librarian(lib.location, turn_90(lib.direction)),
-        visited,
-      )
-    Ok(_) ->
-      visit(grid, Librarian(next_coord, lib.direction), visited)
-    _, -> #(visited, False)
+      visit(grid, Librarian(lib.location, turn_90(lib.direction)), visited)
+    Ok(_) -> visit(grid, Librarian(next_coord, lib.direction), visited)
+    _ -> #(visited, False)
   }
-}
-
-fn causes_loop(grid: GridS, lib: Librarian) -> Bool {
-  visit(grid, lib, set.new()).1
 }
 
 pub fn pt_1(input: String) {
@@ -112,11 +78,10 @@ pub fn pt_1(input: String) {
     input
     |> parse_input
 
-  let #(visited, _loops) =
-    visit(grid, lib, set.new())
+  let #(visited, _loops) = visit(grid, lib, set.new())
 
   visited
-  |> set.map(fn(x) {x.location})
+  |> set.map(fn(x) { x.location })
   |> set.size
 }
 
@@ -132,10 +97,14 @@ pub fn pt_2(input: String) {
       "#" -> False
       _ -> {
         let g = dict.insert(grid.matrix, coord, "#")
-        causes_loop(
-          gridutil.Grid(matrix: g, max_y: grid.max_y, max_x: grid.max_x), 
-          lib
-        )
+        let #(_, loops) =
+          visit(
+            gridutil.Grid(matrix: g, max_y: grid.max_y, max_x: grid.max_x),
+            lib,
+            set.new(),
+          )
+
+        loops
       }
     }
   })
