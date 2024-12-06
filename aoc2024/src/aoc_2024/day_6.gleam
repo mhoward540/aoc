@@ -90,23 +90,23 @@ pub fn pt_2(input: String) {
     input
     |> parse_input
 
-  gridutil.iter_grid(grid)
-  |> iterator.map(fn(entry) {
-    let #(coord, space) = entry
-    case space {
-      "#" -> False
-      _ -> {
-        let g = dict.insert(grid.matrix, coord, "#")
-        let #(_, loops) =
-          visit(
-            gridutil.Grid(matrix: g, max_y: grid.max_y, max_x: grid.max_x),
-            lib,
-            set.new(),
-          )
+  let #(coords_to_visit, _) = visit(grid, lib, set.new())
 
-        loops
-      }
-    }
+  let coords_to_visit =
+    coords_to_visit
+    |> set.map(fn(x) { x.location })
+
+  set.to_list(coords_to_visit)
+  |> list.map(fn(coord) {
+    let g = dict.insert(grid.matrix, coord, "#")
+    let #(_, loops) =
+      visit(
+        gridutil.Grid(matrix: g, max_y: grid.max_y, max_x: grid.max_x),
+        lib,
+        set.new(),
+      )
+
+    loops
   })
-  |> iterator.fold(0, fn(acc, looped) { acc + bool.to_int(looped) })
+  |> list.fold(0, fn(acc, looped) { acc + bool.to_int(looped) })
 }
