@@ -56,6 +56,8 @@ fn parse_input(input: String) -> #(GridS, Librarian) {
   #(grid, Librarian(start_coord, Up))
 }
 
+
+// TODO this is probably faster than recursion - rewrite to use this?
 fn map_covered_area(grid: GridS, l: Librarian) -> Set(Coord) {
   let visited_coords =
     iterator.unfold(l, fn(lib) {
@@ -82,29 +84,27 @@ fn map_covered_area(grid: GridS, l: Librarian) -> Set(Coord) {
 fn visit(
   grid: GridS,
   lib: Librarian,
-  obstruction: Coord,
   visited: Set(Librarian),
-) -> Bool {
-  use <- bool.guard(set.contains(visited, lib), True)
+) -> #(Set(Librarian), Bool) {
+  use <- bool.guard(set.contains(visited, lib), #(visited, True))
   let visited = set.insert(visited, lib)
   let next_coord = move(lib.location, lib.direction)
   let next_space = dict.get(grid.matrix, next_coord)
-  case next_space, next_coord == obstruction {
-    Ok("#"), _ | Ok(_), True ->
+  case next_space {
+    Ok("#") ->
       visit(
         grid,
         Librarian(lib.location, turn_90(lib.direction)),
-        obstruction,
         visited,
       )
-    Ok(_), False ->
-      visit(grid, Librarian(next_coord, lib.direction), obstruction, visited)
-    _, _ -> False
+    Ok(_) ->
+      visit(grid, Librarian(next_coord, lib.direction), visited)
+    _, -> #(visited, False)
   }
 }
 
-fn causes_loop(grid: GridS, lib: Librarian, obstruction: Coord) -> Bool {
-  visit(grid, lib, obstruction, set.new())
+fn causes_loop(grid: GridS, lib: Librarian) -> Bool {
+  visit(grid, lib, set.new()).1
 }
 
 pub fn pt_1(input: String) {
@@ -112,11 +112,12 @@ pub fn pt_1(input: String) {
     input
     |> parse_input
 
-  let s =
-    map_covered_area(grid, lib)
-    |> set.size
+  let #(visited, _loops) =
+    visit(grid, lib, set.new())
 
-  s + 1
+  visited
+  |> set.map(fn(x) {x.location})
+  |> set.size
 }
 
 pub fn pt_2(input: String) {
@@ -129,7 +130,13 @@ pub fn pt_2(input: String) {
     let #(coord, space) = entry
     case space {
       "#" -> False
-      _ -> causes_loop(grid, lib, coord)
+      _ -> {
+        let g = dict.insert(grid.matrix, coord, "#")
+        causes_loop(
+          gridutil.Grid(matrix: g, max_y: grid.max_y, max_x: grid.max_x), 
+          lib
+        )
+      }
     }
   })
   |> iterator.fold(0, fn(acc, looped) { acc + bool.to_int(looped) })
