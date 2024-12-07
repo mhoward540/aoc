@@ -1,6 +1,7 @@
 import gleam/bool
 import gleam/int
 import gleam/io
+import gleam/iterator
 import gleam/list
 import gleam/order
 import gleam/string
@@ -36,18 +37,24 @@ type CalibrationOperation {
   Concat
 }
 
+fn concat_nums(a: Int, b: Int) -> Int {
+  let assert Ok(offset_base) =
+    iterator.unfold(1, fn(acc) {
+      case acc > b {
+        True -> iterator.Done
+        False -> iterator.Next(acc, acc * 10)
+      }
+    })
+    |> iterator.last
+
+  { a * offset_base * 10 } + b
+}
+
 fn operate(a: Int, b: Int, op: CalibrationOperation) -> Int {
   case op {
     Mul -> a * b
     Add -> a + b
-    Concat -> {
-      // This should be really slow, but I don't feel like importing a math lib to do log/pow
-      let assert Ok(res) =
-        { int.to_string(a) <> int.to_string(b) }
-        |> int.parse
-
-      res
-    }
+    Concat -> concat_nums(a, b)
   }
 }
 
