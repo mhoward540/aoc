@@ -27,22 +27,15 @@ fn parse_input(input: String) -> #(GridS, AntennaDict) {
   #(grid, antennas)
 }
 
-fn map_antinodes(entry: #(String, List(Coord))) -> Set(Coord) {
-  let #(_char, coords) = entry
+fn map_antinodes(pair: #(Coord, Coord)) -> Set(Coord) {
+  let #(a, b) = pair
+  let assert [small, big] =
+    [a, b]
+    |> list.sort(gridutil.coord_compare)
 
-  coords
-  |> list.combination_pairs
-  |> list.map(fn(e) {
-    let #(a, b) = e
-    let assert [small, big] =
-      [a, b]
-      |> list.sort(gridutil.coord_compare)
+  let delta = gridutil.sub(big, small)
 
-    let delta = gridutil.sub(big, small)
-
-    [gridutil.sub(small, delta), gridutil.add(big, delta)]
-  })
-  |> list.flatten
+  [gridutil.sub(small, delta), gridutil.add(big, delta)]
   |> set.from_list
 }
 
@@ -63,28 +56,21 @@ fn walk(
   }
 }
 
-fn map_antinodes2(entry: #(String, List(Coord)), grid: GridS) -> Set(Coord) {
-  let #(_char, coords) = entry
-
+fn map_antinode_line(pair: #(Coord, Coord), grid: GridS) -> Set(Coord) {
   let in_grid = fn(c: Coord) { gridutil.contains(grid, c) }
 
-  coords
-  |> list.combination_pairs
-  |> list.map(fn(e) {
-    let #(a, b) = e
-    let assert [small, big] =
-      [a, b]
-      |> list.sort(gridutil.coord_compare)
+  let #(a, b) = pair
+  let assert [small, big] =
+    [a, b]
+    |> list.sort(gridutil.coord_compare)
 
-    let delta_pos = gridutil.sub(big, small)
-    let delta_neg = gridutil.neg(delta_pos)
+  let delta_pos = gridutil.sub(big, small)
+  let delta_neg = gridutil.neg(delta_pos)
 
-    set.union(
-      walk(small, delta_neg, set.new(), in_grid),
-      walk(big, delta_pos, set.new(), in_grid),
-    )
-  })
-  |> list.fold(set.new(), set.union)
+  set.union(
+    walk(small, delta_neg, set.new(), in_grid),
+    walk(big, delta_pos, set.new(), in_grid),
+  )
 }
 
 pub fn pt_1(input: String) {
@@ -94,8 +80,12 @@ pub fn pt_1(input: String) {
 
   let antinodes =
     antennas
-    |> dict.to_list
-    |> list.map(map_antinodes(_))
+    |> dict.values
+    |> list.flat_map(fn(coords_for_group) {
+      coords_for_group
+      |> list.combination_pairs
+    })
+    |> list.map(map_antinodes)
     |> list.fold(set.new(), set.union)
     |> set.filter(gridutil.contains(grid, _))
 
@@ -118,8 +108,12 @@ pub fn pt_2(input: String) {
 
   let antinodes =
     antennas
-    |> dict.to_list
-    |> list.map(map_antinodes2(_, grid))
+    |> dict.values
+    |> list.flat_map(fn(coords_for_group) {
+      coords_for_group
+      |> list.combination_pairs
+    })
+    |> list.map(map_antinode_line(_, grid))
     |> list.fold(set.new(), set.union)
 
   // let drawable =
