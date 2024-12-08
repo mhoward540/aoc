@@ -23,43 +23,39 @@ fn parse_input(input: String) -> #(GridS, AntennaDict) {
       v
       |> list.map(fn(x) { x.0 })
     })
-  // |> io.debug
 
   #(grid, antennas)
 }
 
+fn map_antinodes(entry: #(String, List(Coord))) -> Set(Coord) {
+  let #(_char, coords) = entry
 
-fn map_antinodes(entry: #(String, List(Coord))) {
-  let #(char, coords) = entry
+  coords
+  |> list.combination_pairs
+  |> list.map(fn(e) {
+    let #(a, b) = e
+    let assert [small, big] =
+      [a, b]
+      |> list.sort(gridutil.coord_compare)
 
-  let out =
-    coords
-    |> list.combination_pairs
-    |> list.map(fn(e) {
-      let #(a, b) = e
-      let assert [small, big] =
-        [a, b]
-        |> list.sort(gridutil.coord_compare)
+    let delta = gridutil.sub(big, small)
 
-      let y_diff = big.0 - small.0
-      let x_diff = big.1 - small.1
-
-      [#(small.0 - y_diff, small.1 - x_diff), #(big.0 + y_diff, big.1 + x_diff)]
-    })
-    |> list.flatten
-
-  // io.debug(char)
-  // io.debug(a)
-  // io.debug("")
-  out
+    [gridutil.sub(small, delta), gridutil.add(big, delta)]
+  })
+  |> list.flatten
+  |> set.from_list
 }
 
-fn walk(start: Coord, delta: Coord, visited: Set(Coord), in_grid: fn (Coord) -> Bool) -> Set(Coord) {
-  let #(y_s, x_s) = start
-  let #(y_d, x_d) = delta
+// walk coords by step of size delta, until the coord is outside of the grid
+fn walk(
+  start: Coord,
+  delta: Coord,
+  visited: Set(Coord),
+  in_grid: fn(Coord) -> Bool,
+) -> Set(Coord) {
   case in_grid(start) {
     True -> {
-      let new_coord = #(y_s + y_d, x_s + x_d)
+      let new_coord = gridutil.add(start, delta)
       let visited = set.insert(visited, start)
       walk(new_coord, delta, visited, in_grid)
     }
@@ -67,43 +63,28 @@ fn walk(start: Coord, delta: Coord, visited: Set(Coord), in_grid: fn (Coord) -> 
   }
 }
 
-fn map_antinodes2(entry: #(String, List(Coord)), grid: GridS) {
-  let #(char, coords) = entry
-  
-  let in_grid = fn(c: Coord) {
-    let #(y, x) = c
-    y >= 0
-    && x >= 0
-    && y <= grid.max_y
-    && x <= grid.max_x
-  }
+fn map_antinodes2(entry: #(String, List(Coord)), grid: GridS) -> Set(Coord) {
+  let #(_char, coords) = entry
 
-  let out =
-    coords
-    |> list.combination_pairs
-    |> list.map(fn(e) {
-      let #(a, b) = e
-      let assert [small, big] =
-        [a, b]
-        |> list.sort(gridutil.coord_compare)
+  let in_grid = fn(c: Coord) { gridutil.contains(grid, c) }
 
-      let y_diff = big.0 - small.0
-      let x_diff = big.1 - small.1
-      
-      let delta_pos = #(y_diff, x_diff)
-      let delta_neg = #(-y_diff, -x_diff)
-      
-      set.union(
-        walk(small, delta_neg, set.new(), in_grid),
-        walk(big, delta_pos, set.new(), in_grid)
-      )
-    })
-    |> list.fold(set.new(), set.union)
+  coords
+  |> list.combination_pairs
+  |> list.map(fn(e) {
+    let #(a, b) = e
+    let assert [small, big] =
+      [a, b]
+      |> list.sort(gridutil.coord_compare)
 
-  // io.debug(char)
-  // io.debug(a)
-  // io.debug("")
-  out
+    let delta_pos = gridutil.sub(big, small)
+    let delta_neg = gridutil.neg(delta_pos)
+
+    set.union(
+      walk(small, delta_neg, set.new(), in_grid),
+      walk(big, delta_pos, set.new(), in_grid),
+    )
+  })
+  |> list.fold(set.new(), set.union)
 }
 
 pub fn pt_1(input: String) {
@@ -115,26 +96,19 @@ pub fn pt_1(input: String) {
     antennas
     |> dict.to_list
     |> list.map(map_antinodes(_))
-    |> list.flatten
-    |> list.unique
-    |> list.filter(fn(coord) {
-      let #(y, x) = coord
-      y >= 0
-      && x >= 0
-      && y <= grid.max_y
-      && x <= grid.max_x
-    })
-    |> list.unique
+    |> list.fold(set.new(), set.union)
+    |> set.filter(gridutil.contains(grid, _))
 
   // let drawable =
   //   antinodes
+  //   |> set.to_list
   //   |> list.fold(grid.matrix, fn(d, coord) { dict.insert(d, coord, "#") })
 
   // Grid(drawable, grid.max_y, grid.max_x)
   // |> gridutil.draw_grid
 
   antinodes
-  |> list.length
+  |> set.size
 }
 
 pub fn pt_2(input: String) {
@@ -147,7 +121,7 @@ pub fn pt_2(input: String) {
     |> dict.to_list
     |> list.map(map_antinodes2(_, grid))
     |> list.fold(set.new(), set.union)
-    
+
   // let drawable =
   //   antinodes
   //   |> set.to_list
@@ -155,6 +129,6 @@ pub fn pt_2(input: String) {
 
   // Grid(drawable, grid.max_y, grid.max_x)
   // |> gridutil.draw_grid
-  
+
   antinodes |> set.size
 }

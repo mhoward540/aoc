@@ -121,3 +121,21 @@ pub fn draw_grid(grid: GridS) -> GridS {
 
   grid
 }
+
+pub fn contains(grid: Grid(_), coord: Coord) -> Bool {
+  let #(y, x) = coord
+  
+  y >= 0 && x >= 0 && y <= grid.max_y && x <= grid.max_x
+}
+
+pub fn add(a: Coord, b: Coord) -> Coord {
+  #(a.0 + b.0, a.1 + b.1)
+}
+
+pub fn sub(a: Coord, b: Coord) -> Coord {
+  #(a.0 - b.0, a.1 - b.1)
+}
+
+pub fn neg(a: Coord) -> Coord {
+  #(-a.0, -a.1)
+}
