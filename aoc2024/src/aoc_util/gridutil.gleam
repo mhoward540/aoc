@@ -1,5 +1,6 @@
 import gleam/dict.{type Dict}
 import gleam/int
+import gleam/io
 import gleam/iterator.{type Iterator}
 import gleam/list
 import gleam/order.{type Order}
@@ -99,4 +100,24 @@ pub fn iter_grid(grid: Grid(value)) -> Iterator(#(Coord, value)) {
     })
   })
   |> iterator.flatten
+}
+
+pub fn draw_grid(grid: GridS) -> GridS {
+  io.debug("")
+  iterator.range(0, grid.max_y)
+  |> iterator.map(fn(y) {
+    iterator.range(0, grid.max_x)
+    |> iterator.map(fn(x) {
+      let c = #(y, x)
+      let assert Ok(v) = dict.get(grid.matrix, c)
+
+      v
+    })
+    |> iterator.to_list
+    |> string.join("")
+  })
+  |> iterator.to_list
+  |> list.map(io.debug)
+
+  grid
 }
