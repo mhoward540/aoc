@@ -1,6 +1,3 @@
-from collections import namedtuple
-from bisect import bisect, bisect_right, insort, bisect_left
-from itertools import groupby, chain
 from typing import NamedTuple
 
 class Fileblock(NamedTuple):
@@ -12,14 +9,14 @@ class Fileblock(NamedTuple):
 class Space(NamedTuple):
     run: int
     start_index: int
-    
-    
+
+
 # TODO ideally this would be done with bisect
 def get_best_empty_space_index(l: list[Space], file: Fileblock) -> int | None:
     for i, space in enumerate(l):
         if space.run >= file.run and space.start_index < file.start_index:
             return i
-    
+
     return None
 
 def get_list_string(l: list[Fileblock | Space]) -> str:
@@ -44,7 +41,7 @@ def print_list(l: list[Fileblock | Space]) -> None:
 def insert_and_sort(s: list[Space], item: Space) -> None:
     s.append(item)
     s.sort(key=lambda sb: (sb.start_index))
-    
+
 
 def part2(in_str: str) -> int:
     chars = list(in_str)
@@ -83,7 +80,7 @@ def part2(in_str: str) -> int:
 
     out: list[Fileblock] = []
     for file in reversed(fileblocks):
-        
+
         insertion_space_i = get_best_empty_space_index(s_spaceblocks, file)
 
         if insertion_space_i is None:
@@ -92,23 +89,8 @@ def part2(in_str: str) -> int:
 
         insertion_space = s_spaceblocks[insertion_space_i]
 
-        if insertion_space.run == file.run:
-            fb = Fileblock(
-                start_index = insertion_space.start_index,
-                id = file.id,
-                run = file.run
-            )
-            out.append(fb)
-
-            s_spaceblocks.pop(insertion_space_i)
-            new_space = Space(
-                start_index = file.start_index,
-                run = file.run
-            )
-
-            insert_and_sort(s_spaceblocks, new_space)
-
-        elif insertion_space.run > file.run:
+        if insertion_space.run >= file.run:
+            # put the fileblock at the index of the empty space
             fb = Fileblock(
                 start_index = insertion_space.start_index,
                 id = file.id,
@@ -117,30 +99,35 @@ def part2(in_str: str) -> int:
 
             out.append(fb)
 
-            new_space = Space(
-                start_index = fb.start_index + fb.run,
-                run = insertion_space.run - fb.run
-            )
-
+            # remove this empty space for now
             s_spaceblocks.pop(insertion_space_i)
 
-            insert_and_sort(s_spaceblocks, new_space)
-            
+            # backfill the place where the fileblock was living with empty space
             replacement_space = Space(
                 start_index = file.start_index,
                 run = file.run
             )
-            
+
             insert_and_sort(s_spaceblocks, replacement_space)
+
+            # if the fileblock didn't fit perfectly into the chosen space then
+            # we need to add the difference back into the list of spaces
+            new_space_run = insertion_space.run - fb.run
+            new_space = Space(
+                start_index = fb.start_index + fb.run,
+                run = new_space_run
+            )
+
+            insert_and_sort(s_spaceblocks, new_space)
+
         else:
             out.append(file)
 
     result = 0
     for item in sorted(out, key=lambda x: x.start_index):
-        if type(item) is Fileblock:
-            # TODO dumb
-            result += sum(item.id * index for index in range(item.start_index, item.start_index + item.run))
-            
+        # TODO dumb
+        result += sum(item.id * index for index in range(item.start_index, item.start_index + item.run))
+
     return result
 
 
