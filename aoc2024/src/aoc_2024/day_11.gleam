@@ -1,5 +1,6 @@
 import gleam/bool
 import gleam/dict.{type Dict}
+import gleam/float
 import gleam/int
 import gleam/io
 import gleam/iterator
@@ -7,6 +8,7 @@ import gleam/list
 import gleam/otp/task
 import gleam/result
 import gleam/string
+import gleam_community/maths/elementary
 
 fn parse_input(input: String) -> List(Int) {
   input
@@ -15,26 +17,17 @@ fn parse_input(input: String) -> List(Int) {
   |> result.values
 }
 
-fn count_and_split_digits2(stone: Int) -> #(Int, List(Int)) {
-  use <- bool.guard(stone < 10, #(1, [stone]))
-  let s_stone = int.to_string(stone)
-
-  let len = string.length(s_stone)
-  let assert Ok(half_len) = int.divide(len, 2)
-
-  let left_s = string.slice(s_stone, 0, half_len)
-  let right_s = string.slice(s_stone, half_len, half_len)
-
-  let assert Ok(left) = int.parse(left_s)
-  let assert Ok(right) = int.parse(right_s)
-
-  #(len, [left, right])
+fn stone_len(stone: Int) -> Int {
+  use <- bool.guard(stone < 10, 1)
+  let f_stone = int.to_float(stone)
+  let assert Ok(len) = elementary.logarithm_10(f_stone)
+  float.truncate(float.floor(len)) + 1
 }
 
 fn count_and_split_digits(stone: Int) -> #(Int, List(Int)) {
   use <- bool.guard(stone < 10, #(1, [stone]))
-  let assert Ok(digits) = int.digits(stone, 10)
-  let len = list.length(digits)
+  let f_stone = int.to_float(stone)
+  let len = stone_len(stone)
   let assert Ok(half_len) = int.divide(len, 2)
   let assert Ok(rem) = int.remainder(len, 2)
   let half_len = case rem > 0 {
@@ -42,104 +35,67 @@ fn count_and_split_digits(stone: Int) -> #(Int, List(Int)) {
     False -> half_len
   }
 
-  let assert [left, right] = list.sized_chunk(digits, half_len)
-  let assert Ok(left) = int.undigits(left, 10)
-  let assert Ok(right) = int.undigits(right, 10)
-
+  let assert Ok(p) = int.power(10, int.to_float(half_len))
+  let assert Ok(f_left) = float.divide(f_stone, p)
+  let assert Ok(f_right) = float.modulo(f_stone, p)
+  let left = float.truncate(f_left)
+  let right = float.truncate(f_right)
   #(len, [left, right])
 }
 
 fn replace_stone(stone: Int) -> List(Int) {
+  use <- bool.guard(stone == 0, [1])
+  let len = stone_len(stone)
+  use <- bool.guard(len % 2 == 0, { count_and_split_digits(stone).1 })
+
+  [stone * 2024]
+}
+
+fn replaced_stone_len(stone: Int) -> Int {
   let #(len, lr_digits) = count_and_split_digits(stone)
   case stone, len % 2 == 0 {
-    0, _ -> [1]
-    _, True -> lr_digits
-    _, _ -> [stone * 2024]
+    0, _ -> 1
+    _, True -> 2
+    _, _ -> 1
   }
 }
-
-fn naive_replace_stones(stones: List(Int)) -> List(Int) {
-  stones
-  |> list.flat_map(replace_stone)
-}
-
-pub fn pt_1(input: String) {
-  let stones =
-    input
-    |> parse_input
-
-  // let #(sum, cache) =
-  //   stones
-  //   |> list.fold(#(0, dict.new()), fn(acc, stone) {
-  //     let #(num_stones, a_cache) = acc
-
-  //     let #(r_stones, r_cache) = cached_replace_stone_rep(stone, 24, a_cache)
-
-  //     let l = list.length(r_stones)
-  //     let c = dict.combine(a_cache, r_cache, fn(one, other) { other })
-  //     #(num_stones + l, c)
-  //   })
-  //
-
-  stones
-  |> list.map(fn(stone) {
-    task.async(fn() { cached_replace_stone_rep(stone, 24, dict.new()) })
-  })
-  |> list.map(task.await_forever)
-  |> list.fold(0, fn(acc, res) {
-    let #(r_stones, _cache) = res
-    let l = list.length(r_stones)
-    acc + l
-  })
-  // cache
-  // |> dict.to_list
-  // |> list.map(io.debug)
-
-  // sum
-}
-
-// fn cached_replace_stone_rep(stone: Int, times: Int, init_cache: Cache) -> #(Int, Cache) {
-//   iterator.unfold(#([stone], init_cache), fn(acc) {
-//     let #(stones, cache) = acc
-
-//     stones
-//     |> list.fold(#(cache, [], times), fn())
-
-//   })
-// }
 
 type CacheKey {
   CacheKey(stone: Int, depth: Int)
 }
 
-type Cache =
-  Dict(CacheKey, List(Int))
+type Cache2 =
+  Dict(CacheKey, Int)
 
-fn cached_replace_stone_rep(
+fn cached_replace_stone_rep2(
   stone: Int,
   curr_depth: Int,
-  cache: Cache,
-) -> #(List(Int), Cache) {
+  cache: Cache2,
+) -> #(Int, Cache2) {
+  // io.debug("calc ")
+  // io.debug(#(stone, curr_depth))
+  // io.debug("")
   let mapped_stones = dict.get(cache, CacheKey(stone: stone, depth: curr_depth))
   case mapped_stones, curr_depth {
     Ok(stones), _ -> #(stones, cache)
     Error(_), 0 -> {
-      let stones = replace_stone(stone)
+      let stones = replaced_stone_len(stone)
       let cache = dict.insert(cache, CacheKey(stone, 0), stones)
       #(stones, cache)
     }
     Error(_), _ -> {
       let stones = replace_stone(stone)
-      let cache = dict.insert(cache, CacheKey(stone, 0), stones)
+      let l = list.length(stones)
+      let i_cache = dict.insert(cache, CacheKey(stone, 0), l)
       let #(stones, cache) =
         stones
-        |> list.fold(#([], dict.new()), fn(acc, s) {
+        |> list.fold(#(0, i_cache), fn(acc, s) {
           let #(a_stones, a_cache) = acc
           let #(r_stones, r_cache) =
-            cached_replace_stone_rep(s, curr_depth - 1, cache)
+            cached_replace_stone_rep2(s, curr_depth - 1, a_cache)
 
           #(
-            list.concat([a_stones, r_stones]),
+            a_stones + r_stones,
             dict.combine(a_cache, r_cache, fn(_one, other) { other }),
           )
         })
@@ -150,38 +106,31 @@ fn cached_replace_stone_rep(
   }
 }
 
-pub fn pt_2(input: String) {
-  // todo
+fn do_part(input: String, reps: Int, init_cache: Cache2) {
   let stones =
     input
     |> parse_input
 
-  // let #(sum, cache) =
-  //   stones
-  //   |> list.fold(#(0, dict.new()), fn(acc, stone) {
-  //     let #(num_stones, a_cache) = acc
+  let #(sum, cache) =
+    stones
+    |> list.fold(#(0, init_cache), fn(acc, stone) {
+      let #(count, a_cache) = acc
+      let #(r_stones, r_cache) =
+        cached_replace_stone_rep2(stone, reps - 1, a_cache)
+      io.debug(r_cache)
+      #(r_stones + count, r_cache)
+    })
+}
 
-  //     let #(r_stones, r_cache) = cached_replace_stone_rep(stone, 24, a_cache)
+pub fn pt_1(input: String) {
+  let #(p1, c) = do_part(input, 25, dict.new())
+  io.debug(p1)
+  let #(p2, c2) = do_part(input, 75, c)
 
-  //     let l = list.length(r_stones)
-  //     let c = dict.combine(a_cache, r_cache, fn(one, other) { other })
-  //     #(num_stones + l, c)
-  //   })
-  //
+  io.debug(#(p1, p2))
+}
 
-  stones
-  |> list.map(fn(stone) {
-    task.async(fn() { cached_replace_stone_rep(stone, 74, dict.new()) })
-  })
-  |> list.map(task.await_forever)
-  |> list.fold(0, fn(acc, res) {
-    let #(r_stones, _cache) = res
-    let l = list.length(r_stones)
-    acc + l
-  })
-  // cache
-  // |> dict.to_list
-  // |> list.map(io.debug)
-
-  // sum
+pub fn pt_2(input: String) {
+  todo
+  // do_part(input, 75)
 }
