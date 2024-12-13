@@ -139,3 +139,28 @@ pub fn sub(a: Coord, b: Coord) -> Coord {
 pub fn neg(a: Coord) -> Coord {
   #(-a.0, -a.1)
 }
+
+pub fn up(c: Coord) -> Coord {
+  #(c.0 - 1, c.1)
+}
+
+pub fn down(c: Coord) -> Coord {
+  #(c.0 + 1, c.1)
+}
+
+pub fn left(c: Coord) -> Coord {
+  #(c.0, c.1 - 1)
+}
+
+pub fn right(c: Coord) -> Coord {
+  #(c.0, c.1 + 1)
+}
+
+pub fn move_cardinals(c: Coord) -> List(Coord) {
+  [
+    up(c),
+    down(c),
+    left(c),
+    right(c)
+  ]
+}
