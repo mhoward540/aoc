@@ -1,3 +1,4 @@
+import gleam/bool
 import gleam/int
 import gleam/io
 import gleam/iterator
@@ -72,11 +73,11 @@ fn is_valid_solution(a_presses: Int, b_presses: Int, machine: Machine) -> Bool {
   { ax + bx } == machine.prize.x && { ay + by } == machine.prize.y
 }
 
-fn brute_force_buttons(machine: Machine) -> Int {
+fn brute_force_buttons(machine: Machine, start: Int, end: Int) -> Int {
   let solutions =
-    iterator.range(0, 100)
+    iterator.range(start, end)
     |> iterator.flat_map(fn(a) {
-      iterator.range(0, 100)
+      iterator.range(start, end)
       |> iterator.map(fn(b) { #(a, b) })
     })
     |> iterator.filter(fn(t) { is_valid_solution(t.0, t.1, machine) })
@@ -92,13 +93,43 @@ fn brute_force_buttons(machine: Machine) -> Int {
   }
 }
 
+fn lin_alg_buttons(machine: Machine) {
+  let prize = machine.prize
+  let a = machine.a
+  let b = machine.b
+  let pybx_pxby = prize.y * b.x - prize.x * b.y
+
+  let bxay_axby = b.x * a.y - a.x * b.y
+  let presses_a = pybx_pxby / bxay_axby
+  use <- bool.guard(pybx_pxby % bxay_axby != 0, 0)
+  let presses_b = { prize.y - presses_a * a.y } / b.y
+
+  case { prize.y - presses_a * a.y } % b.y == 0 {
+    True -> { 3 * presses_a } + presses_b
+    False -> 0
+  }
+}
+
 pub fn pt_1(input: String) {
   input
   |> parse_input
-  |> list.map(brute_force_buttons)
+  |> list.map(lin_alg_buttons)
   |> int.sum
 }
 
 pub fn pt_2(input: String) {
-  todo as "part 2 not implemented"
+  input
+  |> parse_input
+  |> list.map(fn(machine) {
+    Machine(
+      machine.a,
+      machine.b,
+      Prize(
+        machine.prize.x + 10_000_000_000_000,
+        machine.prize.y + 10_000_000_000_000,
+      ),
+    )
+  })
+  |> list.map(lin_alg_buttons)
+  |> int.sum
 }
