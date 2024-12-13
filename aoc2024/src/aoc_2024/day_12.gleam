@@ -1,4 +1,4 @@
-import aoc_util/gridutil.{type Coord, type GridS}
+import aoc_util/gridutil.{type Cardinal, type Coord, type GridS}
 import gleam/bool
 import gleam/dict.{type Dict}
 import gleam/int
@@ -81,6 +81,37 @@ fn score_region(region: Set(Coord), grid: GridS) -> Int {
   area * perimeter
 }
 
+fn count_vertices(region: Set(Coord)) -> Int {
+  region
+  |> set.fold(0, fn(v_count, coord) {
+    let assert [up, up_right, right, down_right, down, down_left, left, up_left] =
+      gridutil.move_card_intercard(coord)
+      |> list.map(set.contains(region, _))
+      
+    let c = [
+      !up && !left,
+      !up && !right,
+      !down && !left,
+      !down && !right,
+      up && left && !up_left,
+      up && right && !up_right,
+      down && left && !down_left,
+      down && right && !down_right,
+    ]
+    |> list.count(fn(x) {x}) 
+    
+    v_count + c
+  })
+}
+
+fn score_region2(region: Set(Coord)) -> Int {
+  let area = set.size(region)
+  use <- bool.guard(area == 1, 4)
+  let side_count = count_vertices(region)
+
+  side_count * area
+}
+
 pub fn pt_1(input: String) {
   let grid =
     input
@@ -93,5 +124,12 @@ pub fn pt_1(input: String) {
 }
 
 pub fn pt_2(input: String) {
-  todo as "part 2 not implemented"
+  let grid =
+    input
+    |> parse_input
+
+  grid
+  |> get_regions
+  |> list.map(score_region2)
+  |> int.sum
 }

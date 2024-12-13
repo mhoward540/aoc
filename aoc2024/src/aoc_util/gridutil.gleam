@@ -16,6 +16,13 @@ pub type Grid(value) {
   Grid(matrix: Matrix(value), max_y: Int, max_x: Int)
 }
 
+pub type Cardinal {
+  Up
+  Right
+  Down
+  Left
+}
+
 pub type GridS =
   Grid(String)
 
@@ -124,7 +131,7 @@ pub fn draw_grid(grid: GridS) -> GridS {
 
 pub fn contains(grid: Grid(_), coord: Coord) -> Bool {
   let #(y, x) = coord
-  
+
   y >= 0 && x >= 0 && y <= grid.max_y && x <= grid.max_x
 }
 
@@ -157,10 +164,18 @@ pub fn right(c: Coord) -> Coord {
 }
 
 pub fn move_cardinals(c: Coord) -> List(Coord) {
+  [up(c), down(c), left(c), right(c)]
+}
+
+pub fn move_card_intercard(c: Coord) -> List(Coord) {
   [
     up(c),
+    c |> up |> right,
+    right(c),
+    c |> down |> right,
     down(c),
-    left(c),
-    right(c)
+    c |> down |> left,
+    left(c), 
+    c |> up |> left,
   ]
 }
