@@ -1,10 +1,14 @@
+import aoc_util/gridutil.{type Coord, type Grid}
+import gleam/dict.{type Dict}
 import gleam/int
 import gleam/io
+import gleam/iterator
 import gleam/list
 import gleam/option
 import gleam/order
 import gleam/regex
 import gleam/result
+import gleam/set.{type Set}
 import gleam/string
 
 type Position {
@@ -107,6 +111,96 @@ pub fn pt_1(input: String) {
   |> safety_factor(width, height)
 }
 
+fn print_grid(
+  positions: List(Position),
+  width: Int,
+  height: Int,
+) -> List(Position) {
+  let d =
+    {
+      use y <- iterator.map(iterator.range(0, height - 1))
+      use x <- iterator.map(iterator.range(0, width - 1))
+      #(#(y, x), ".")
+    }
+    |> iterator.flatten
+    |> iterator.to_list
+    |> dict.from_list
+
+  let d =
+    positions
+    |> list.fold(d, fn(acc, p) {
+      let coord = #(p.y, p.x)
+      dict.insert(acc, coord, "#")
+    })
+
+  gridutil.Grid(matrix: d, max_y: height - 1, max_x: width - 1)
+  |> gridutil.draw_grid
+
+  positions
+}
+
+fn detect_cycle(
+  slow_depth: Int,
+  fast_depth: Int,
+  initstate: List(#(Position, Velocity)),
+  width: Int,
+  height: Int,
+  cache: Dict(Int, List(Position)),
+) -> Int {
+  let slow_pos =
+    result.lazy_unwrap(dict.get(cache, slow_depth), fn() {
+      initstate
+      |> list.map(simulate_movement(_, slow_depth, width, height))
+    })
+
+  let fast_pos =
+    result.lazy_unwrap(dict.get(cache, fast_depth), fn() {
+      initstate
+      |> list.map(simulate_movement(_, fast_depth, width, height))
+    })
+
+  let cache =
+    cache
+    |> dict.insert(slow_depth, slow_pos)
+    |> dict.insert(fast_depth, fast_pos)
+
+  case slow_pos == fast_pos {
+    False ->
+      detect_cycle(
+        slow_depth + 1,
+        fast_depth + 2,
+        initstate,
+        width,
+        height,
+        cache,
+      )
+    True -> slow_depth
+  }
+}
+
 pub fn pt_2(input: String) {
-  todo as "part 2 not implemented"
+  let width = 101
+  let height = 103
+
+  let initstate =
+    input
+    |> parse_input
+
+  let max_range = detect_cycle(0, 2, initstate, width, height, dict.new())
+
+  let assert Ok(state_with_min_safety) =
+    list.range(0, max_range)
+    |> list.map(fn(num) {
+      let state =
+        initstate
+        |> list.map(simulate_movement(_, num, width, height))
+
+      #(safety_factor(state, width, height), num, state)
+    })
+    |> list.sort(fn(a, b) { int.compare(a.0, b.0) })
+    |> list.first
+
+  print_grid(state_with_min_safety.2, width, height)
+
+  state_with_min_safety.1
 }
