@@ -26,6 +26,14 @@ pub type Cardinal {
 pub type GridS =
   Grid(String)
 
+pub fn insert(grid: Grid(value), c: Coord, v: value) -> Grid(value) {
+  let matrix =
+    grid.matrix
+    |> dict.insert(c, v)
+
+  Grid(matrix, grid.max_y, grid.max_x)
+}
+
 pub fn to_grid_transform(
   input: String,
   transform: fn(String) -> value,
@@ -109,8 +117,10 @@ pub fn iter_grid(grid: Grid(value)) -> Iterator(#(Coord, value)) {
   |> iterator.flatten
 }
 
-pub fn draw_grid(grid: GridS) -> GridS {
-  io.debug("")
+pub fn stringify_grid_transform(
+  grid: Grid(value),
+  transform: fn(value) -> String,
+) -> String {
   iterator.range(0, grid.max_y)
   |> iterator.map(fn(y) {
     iterator.range(0, grid.max_x)
@@ -118,14 +128,28 @@ pub fn draw_grid(grid: GridS) -> GridS {
       let c = #(y, x)
       let assert Ok(v) = dict.get(grid.matrix, c)
 
-      v
+      transform(v)
     })
     |> iterator.to_list
     |> string.join("")
   })
   |> iterator.to_list
-  |> list.map(io.debug)
+  |> string.join("\n")
+}
 
+pub fn draw_grid(grid: GridS) -> GridS {
+  io.debug("")
+  io.debug(draw_grid_transform(grid, fn(x) { x }))
+  io.debug("")
+  grid
+}
+
+pub fn draw_grid_transform(grid: Grid(value), transform: fn(value) -> String) {
+  io.debug("")
+  stringify_grid_transform(grid, transform)
+  |> string.split("\n")
+  |> list.map(io.debug)
+  io.debug("")
   grid
 }
 
@@ -167,6 +191,15 @@ pub fn move_cardinals(c: Coord) -> List(Coord) {
   [up(c), down(c), left(c), right(c)]
 }
 
+pub fn move(c: Coord, dir: Cardinal) {
+  case dir {
+    Up -> up(c)
+    Down -> down(c)
+    Left -> left(c)
+    Right -> right(c)
+  }
+}
+
 pub fn move_card_intercard(c: Coord) -> List(Coord) {
   [
     up(c),
@@ -175,7 +208,7 @@ pub fn move_card_intercard(c: Coord) -> List(Coord) {
     c |> down |> right,
     down(c),
     c |> down |> left,
-    left(c), 
+    left(c),
     c |> up |> left,
   ]
 }
