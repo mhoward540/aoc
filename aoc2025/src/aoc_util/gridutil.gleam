@@ -1,5 +1,6 @@
 import gleam/dict.{type Dict}
 import gleam/int
+import gleam/io
 import gleam/list
 import gleam/order.{type Order}
 import gleam/string
@@ -137,18 +138,16 @@ pub fn stringify_grid_transform(
 }
 
 pub fn draw_grid(grid: GridS) -> GridS {
-  echo ""
-  echo draw_grid_transform(grid, fn(x) { x })
-  echo ""
+  io.println("")
+  draw_grid_transform(grid, fn(x) { x })
+  io.println("")
   grid
 }
 
 pub fn draw_grid_transform(grid: Grid(value), transform: fn(value) -> String) {
-  echo ""
-  stringify_grid_transform(grid, transform)
-  |> string.split("\n")
-  |> list.map(fn(x) { echo x })
-  echo ""
+  io.println("")
+  io.println(stringify_grid_transform(grid, transform))
+  io.println("")
   grid
 }
 
