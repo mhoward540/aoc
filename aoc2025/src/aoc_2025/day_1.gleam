@@ -24,15 +24,17 @@ fn parse_input(input: String) {
   |> list.map(parse_line)
 }
 
-fn simulate_passes(turns: List(Turn), start_index: Int, max_dial: Int) {
+fn simulate_passes(turns: List(Turn), start_index: Int, dial_positions: Int) {
   turns
   |> list.fold(#(0, 0, start_index), fn(t, curr_turn) {
     let #(zero_passes, zero_landing, curr_index) = t
 
-    let assert Ok(extra_passes) = int.divide(curr_turn.distance, max_dial + 1)
-    let assert Ok(rem_distance) = int.modulo(curr_turn.distance, max_dial + 1)
+    // if we move 401 places we just end up 1 place away but turn the dial 4 full rotations
+    let assert Ok(extra_passes) = int.divide(curr_turn.distance, dial_positions)
+    let assert Ok(rem_distance) = int.modulo(curr_turn.distance, dial_positions)
 
     let zero_passes = zero_passes + extra_passes
+
     let d = case curr_turn {
       Left(_) -> -1 * rem_distance
       Right(_) -> rem_distance
@@ -42,7 +44,7 @@ fn simulate_passes(turns: List(Turn), start_index: Int, max_dial: Int) {
 
     // if we are already on zero and we move, do not count it as passing zero again since landing on zero already counts
     let zero_passes = case n, curr_index {
-      nn, _ if nn >= { max_dial + 1 } -> zero_passes + 1
+      nn, _ if nn >= dial_positions -> zero_passes + 1
       nn, dd if nn <= 0 && dd != 0 -> zero_passes + 1
       _, _ -> zero_passes
     }
@@ -55,7 +57,7 @@ fn simulate_passes(turns: List(Turn), start_index: Int, max_dial: Int) {
     let assert Ok(new_index) =
       new_mag
       |> int.add(curr_index)
-      |> int.modulo(max_dial + 1)
+      |> int.modulo(dial_positions)
 
     let new_z_landing = case new_index == 0 {
       True -> zero_landing + 1
@@ -70,17 +72,16 @@ pub fn pt_1(input: String) {
   let res =
     input
     |> parse_input
-    |> simulate_passes(50, 99)
+    |> simulate_passes(50, 100)
 
   res.1
 }
 
-// 7077 is too high
 pub fn pt_2(input: String) {
   let res =
     input
     |> parse_input
-    |> simulate_passes(50, 99)
+    |> simulate_passes(50, 100)
 
   res.0
 }
