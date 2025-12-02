@@ -3,7 +3,7 @@ import gleam/int
 import gleam/list
 import gleam/set
 import gleam/string
-import gleam/yielder
+import gleam/yielder.{type Yielder}
 import gleam_community/maths
 
 type PidRange {
@@ -37,19 +37,20 @@ fn is_invalid(num: Int) -> Bool {
   l == r
 }
 
-fn get_even_splits(s: String) -> List(List(String)) {
+fn get_even_splits(s: String) -> Yielder(List(String)) {
   let len = string.length(s)
   let split_lens = maths.divisors(len) |> list.filter(fn(x) { x != len })
 
   split_lens
-  |> list.map(split_evenly_by(s, len, _))
+  |> yielder.from_list
+  |> yielder.map(split_evenly_by(s, len, _))
 }
 
 fn is_really_invalid(num: Int) -> Bool {
   num
   |> int.to_string
   |> get_even_splits
-  |> list.any(fn(l) {
+  |> yielder.any(fn(l) {
     case set.size(set.from_list(l)) == 1 {
       True -> {
         // echo #(num, l)
@@ -63,6 +64,11 @@ fn is_really_invalid(num: Int) -> Bool {
 fn list_invalids(range: PidRange, test_invalid: fn(Int) -> Bool) -> List(Int) {
   list.range(range.start, range.end)
   |> list.filter(test_invalid)
+}
+
+fn sum_invalids(range: PidRange, test_invalid: fn(Int) -> Bool) -> Int {
+  list_invalids(range, test_invalid)
+  |> int.sum
 }
 
 fn split_evenly_by(s: String, len: Int, split_dist: Int) -> List(String) {
@@ -90,13 +96,13 @@ fn split_evenly_by(s: String, len: Int, split_dist: Int) -> List(String) {
 pub fn pt_1(input: String) {
   input
   |> parse_input
-  |> list.flat_map(list_invalids(_, is_invalid))
-  |> list.fold(0, fn(a, b) { a + b })
+  |> list.map(sum_invalids(_, is_invalid))
+  |> int.sum
 }
 
 pub fn pt_2(input: String) {
   input
   |> parse_input
-  |> list.flat_map(list_invalids(_, is_really_invalid))
-  |> list.fold(0, fn(a, b) { a + b })
+  |> list.map(sum_invalids(_, is_really_invalid))
+  |> int.sum
 }
