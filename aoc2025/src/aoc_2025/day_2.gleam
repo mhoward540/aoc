@@ -1,9 +1,9 @@
 import gleam/bool
-import gleam/float
 import gleam/int
 import gleam/list
-import gleam/result
+import gleam/set
 import gleam/string
+import gleam/yielder
 import gleam_community/maths
 
 type PidRange {
@@ -25,29 +25,8 @@ fn parse_input(input: String) -> List(PidRange) {
   })
 }
 
-// using math
-fn is_invalid2(num: Int) -> Bool {
-  use <- bool.guard(num < 10 && num >= 0, False)
-
-  let len =
-    int.to_float(num)
-    |> maths.logarithm_10()
-    |> result.unwrap(0.0)
-    |> float.floor
-    |> float.round
-    |> int.add(1)
-
-  use <- bool.guard(int.modulo(len, 2) == Ok(1), False)
-  let assert Ok(half_len) = int.divide(len, 2)
-  let assert Ok(p) = int.power(10, half_len |> int.to_float)
-  let p = p |> float.round
-  let assert Ok(l) = int.divide(num, p)
-  let assert Ok(r) = int.modulo(num, p)
-
-  l == r
-}
-
-fn is_invalid(num_s: String) -> Bool {
+fn is_invalid(num: Int) -> Bool {
+  let num_s = int.to_string(num)
   let len = num_s |> string.length
   use <- bool.guard(len == 1, False)
   use <- bool.guard(int.modulo(len, 2) == Ok(1), False)
@@ -58,30 +37,66 @@ fn is_invalid(num_s: String) -> Bool {
   l == r
 }
 
-fn list_invalids(range: PidRange) -> List(Int) {
-  // TODO maybe do log10 here instead
-  let start_len = range.start_s |> string.length
-  let end_len = range.end_s |> string.length
-  use <- bool.guard(
-    int.modulo(start_len, 2) == Ok(1) && int.modulo(end_len, 2) == Ok(1),
-    [],
-  )
-  list.range(range.start, range.end)
-  |> list.filter(fn(num) {
-    num
-    |> int.to_string
-    |> is_invalid
+fn get_even_splits(s: String) -> List(List(String)) {
+  let len = string.length(s)
+  let split_lens = maths.divisors(len) |> list.filter(fn(x) { x != len })
+
+  split_lens
+  |> list.map(split_evenly_by(s, len, _))
+}
+
+fn is_really_invalid(num: Int) -> Bool {
+  num
+  |> int.to_string
+  |> get_even_splits
+  |> list.any(fn(l) {
+    case set.size(set.from_list(l)) == 1 {
+      True -> {
+        // echo #(num, l)
+        True
+      }
+      False -> False
+    }
   })
+}
+
+fn list_invalids(range: PidRange, test_invalid: fn(Int) -> Bool) -> List(Int) {
+  list.range(range.start, range.end)
+  |> list.filter(test_invalid)
+}
+
+fn split_evenly_by(s: String, len: Int, split_dist: Int) -> List(String) {
+  yielder.unfold(s, fn(remaining_s) {
+    case string.length(remaining_s) {
+      0 -> yielder.Done
+      _ -> {
+        let curr =
+          remaining_s
+          |> string.to_graphemes
+          |> yielder.from_list
+          |> yielder.take(split_dist)
+          |> yielder.to_list
+          |> string.join(with: "")
+
+        let next = string.slice(remaining_s, split_dist, len)
+
+        yielder.Next(curr, next)
+      }
+    }
+  })
+  |> yielder.to_list
 }
 
 pub fn pt_1(input: String) {
   input
   |> parse_input
-  |> list.flat_map(list_invalids)
+  |> list.flat_map(list_invalids(_, is_invalid))
   |> list.fold(0, fn(a, b) { a + b })
 }
 
-// 54234399969 is too high?
 pub fn pt_2(input: String) {
-  todo as "part 2 not implemented"
+  input
+  |> parse_input
+  |> list.flat_map(list_invalids(_, is_really_invalid))
+  |> list.fold(0, fn(a, b) { a + b })
 }
