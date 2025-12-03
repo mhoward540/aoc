@@ -1,3 +1,4 @@
+import gleam/bool
 import gleam/int
 import gleam/list
 import gleam/order
@@ -16,49 +17,76 @@ fn parse_input(input: String) -> List(List(Int)) {
   })
 }
 
-fn find_joltage(acc_t: #(Int, Int), curr_t: #(Int, Int)) {
-  let #(max, _) = acc_t
-  let #(curr_joltage, index) = curr_t
+fn get_joltage_digits(
+  row: List(Int),
+  len: Int,
+  remaining_to_find: Int,
+  index_of_prev: Int,
+  digits: List(Int),
+) {
+  let #(digit, digit_index) =
+    row
+    |> list.index_map(fn(x, i) { #(x, i) })
+    |> list.fold_until(#(-1, -1), fn(acc_t, curr_t) {
+      let #(curr, index) = curr_t
+      use <- bool.guard(
+        index == { len - remaining_to_find + 1 },
+        list.Stop(acc_t),
+      )
+      // use <- bool.guard(index == index_of_prev, list.Continue(acc_t))
+      use <- bool.guard(curr == 9, list.Stop(curr_t))
 
-  case int.compare(curr_joltage, max) {
-    order.Gt -> #(curr_joltage, index)
-    order.Lt -> acc_t
-    order.Eq -> acc_t
+      case int.compare(curr, acc_t.0) {
+        order.Gt -> list.Continue(curr_t)
+        order.Lt -> list.Continue(acc_t)
+        order.Eq -> list.Continue(acc_t)
+      }
+    })
+
+  let digits = [digit, ..digits]
+  let remaining_to_find = remaining_to_find - 1
+  case remaining_to_find {
+    0 -> digits |> list.reverse
+    _ -> {
+      let row = list.drop(row, digit_index + 1)
+      get_joltage_digits(
+        row,
+        len - { digit_index + 1 },
+        remaining_to_find,
+        digit_index,
+        digits,
+      )
+    }
   }
 }
 
-fn get_row_joltage(row: List(Int)) {
-  let l_row =
-    row
-    |> list.reverse
+fn join(digits: List(Int)) -> Int {
+  let assert Ok(out) =
+    digits
+    |> list.map(int.to_string)
+    |> string.join("")
+    |> int.parse
 
-  let assert [_, ..l_row] = l_row
-  let l_row = l_row |> list.reverse
+  out
+}
 
-  let #(l, l_index) =
-    l_row
-    |> list.index_map(fn(x, i) { #(x, i) })
-    |> list.fold(#(-1, -1), find_joltage)
+fn get_joltage_of_length(row: List(Int), n: Int) {
+  let len = list.length(row)
+  let digits = get_joltage_digits(row, len, n, -1, [])
 
-  let #(r, _) =
-    row
-    |> list.index_map(fn(x, i) { #(x, i) })
-    |> list.drop_while(fn(t) { t.1 <= l_index })
-    |> list.fold(#(-1, -1), find_joltage)
-
-  echo #(l, r)
-  echo ""
-
-  { l * 10 } + r
+  join(digits)
 }
 
 pub fn pt_1(input: String) {
   input
   |> parse_input
-  |> list.map(get_row_joltage)
+  |> list.map(get_joltage_of_length(_, 2))
   |> int.sum
 }
 
 pub fn pt_2(input: String) {
-  todo as "part 2 not implemented"
+  input
+  |> parse_input
+  |> list.map(get_joltage_of_length(_, 12))
+  |> int.sum
 }
