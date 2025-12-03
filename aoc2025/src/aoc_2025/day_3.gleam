@@ -43,18 +43,11 @@ fn get_joltage_digits(
 
   let digits = [digit, ..digits]
   let remaining_to_find = remaining_to_find - 1
-  case remaining_to_find {
-    0 -> digits |> list.reverse
-    _ -> {
-      let row = list.drop(row, digit_index + 1)
-      get_joltage_digits(
-        row,
-        len - { digit_index + 1 },
-        remaining_to_find,
-        digits,
-      )
-    }
-  }
+  // exit condition
+  use <- bool.guard(remaining_to_find == 0, digits |> list.reverse)
+
+  let row = list.drop(row, digit_index + 1)
+  get_joltage_digits(row, len - { digit_index + 1 }, remaining_to_find, digits)
 }
 
 fn join(digits: List(Int)) -> Int {
