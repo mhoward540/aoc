@@ -21,7 +21,6 @@ fn get_joltage_digits(
   row: List(Int),
   len: Int,
   remaining_to_find: Int,
-  index_of_prev: Int,
   digits: List(Int),
 ) {
   let #(digit, digit_index) =
@@ -33,7 +32,6 @@ fn get_joltage_digits(
         index == { len - remaining_to_find + 1 },
         list.Stop(acc_t),
       )
-      // use <- bool.guard(index == index_of_prev, list.Continue(acc_t))
       use <- bool.guard(curr == 9, list.Stop(curr_t))
 
       case int.compare(curr, acc_t.0) {
@@ -53,7 +51,6 @@ fn get_joltage_digits(
         row,
         len - { digit_index + 1 },
         remaining_to_find,
-        digit_index,
         digits,
       )
     }
@@ -72,7 +69,7 @@ fn join(digits: List(Int)) -> Int {
 
 fn get_joltage_of_length(row: List(Int), n: Int) {
   let len = list.length(row)
-  let digits = get_joltage_digits(row, len, n, -1, [])
+  let digits = get_joltage_digits(row, len, n, [])
 
   join(digits)
 }
