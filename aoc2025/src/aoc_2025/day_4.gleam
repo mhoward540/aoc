@@ -2,7 +2,6 @@ import aoc_util/gridutil.{type Coord, type Grid}
 import gleam/bool
 import gleam/dict
 import gleam/list
-import gleam/result
 import gleam/yielder
 
 type Space {
