@@ -21,26 +21,26 @@ fn parse_input(input: String) -> Grid(Space) {
   })
 }
 
+fn list_adjacent_paper(grid: Grid(Space), coord: Coord) {
+  coord
+  |> gridutil.move_card_intercard
+  |> list.filter_map(fn(adj_coord) {
+    let adj_space = dict.get(grid.matrix, adj_coord)
+
+    case adj_space {
+      Ok(Paper) -> Ok(adj_coord)
+      _ -> Error(adj_coord)
+    }
+  })
+}
+
 fn list_movable(grid: Grid(Space), threshold: Int) -> List(Coord) {
   grid
   |> gridutil.iter_grid
   |> yielder.filter(fn(t) { t.1 == Paper })
   |> yielder.map(fn(t) {
     let #(coord, _space) = t
-    let adjacents =
-      coord
-      |> gridutil.move_card_intercard
-      |> list.filter_map(fn(adj_coord) {
-        let adj_space = dict.get(grid.matrix, adj_coord)
-        use <- bool.guard(result.is_error(adj_space), Error(adj_coord))
-        let assert Ok(adj_space) = adj_space
-
-        case adj_space {
-          Paper -> Ok(adj_coord)
-          _ -> Error(adj_coord)
-        }
-      })
-
+    let adjacents = list_adjacent_paper(grid, coord)
     #(coord, adjacents)
   })
   |> yielder.filter(fn(t) { list.length(t.1) < threshold })
