@@ -100,18 +100,16 @@ pub fn pt_1(input: String) {
 
   iids
   |> list.count(in_any_range(_, ranges))
-  // echo "Before"
-  // echo list.length(ranges)
-  // echo "After"
-  // echo ranges
-  //   |> merge_ranges
-  //   |> list.length
-  // echo "IDs"
-  // echo list.length(iids)
-
-  // ""
 }
 
 pub fn pt_2(input: String) {
-  todo as "part 2 not implemented"
+  let #(ranges, _) =
+    input
+    |> parse_input
+
+  let ranges = merge_ranges(ranges)
+
+  ranges
+  |> list.map(fn(r) { { r.end - r.start } + 1 })
+  |> int.sum
 }
