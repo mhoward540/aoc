@@ -5,6 +5,7 @@ import gleam/list
 import gleam/set.{type Set}
 import gleam/string
 import gleam/string_tree.{type StringTree}
+import gleam/yielder
 
 pub fn all_indices_of(thing: s, l: List(s)) -> List(Int) {
   l
@@ -29,14 +30,22 @@ pub fn group_maintaining_order(l: List(#(kt, vt))) -> Dict(kt, List(vt)) {
 }
 
 pub fn cols(arr: List(List(t))) -> List(List(t)) {
-  arr
-  |> list.map(fn(row) {
-    row
-    |> list.index_map(fn(row, i) { #(i, row) })
+  let d =
+    arr
+    |> list.map(fn(row) {
+      row
+      |> list.index_map(fn(row, i) { #(i, row) })
+    })
+    |> list.flatten
+    |> group_maintaining_order
+
+  yielder.unfold(0, fn(i) {
+    case dict.get(d, i) {
+      Ok(col) -> yielder.Next(col, i + 1)
+      Error(_) -> yielder.Done
+    }
   })
-  |> list.flatten
-  |> group_maintaining_order
-  |> dict.values
+  |> yielder.to_list
 }
 
 fn split_helper(
@@ -83,13 +92,4 @@ pub fn split_at_indices(s: String, indices: List(Int)) -> List(String) {
   let len = string.length(s)
 
   split_helper(string.to_graphemes(s), 0, len, string_tree.new(), indices, [])
-  // string.to_graphemes(s)
-  // |> list.index_fold(#([], [], indices), fn(acc, c, i) {
-  //   let #(builder, strs, splits) = acc
-  //   let maybe_index = list.first(splits)
-  //   use <- bool.guard(result.)
-  //   todo
-  // })
-
-  // ""
 }
