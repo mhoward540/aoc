@@ -1,10 +1,12 @@
 import aoc_util/gridutil.{type Coord, type Grid}
 import gleam/bool
 import gleam/dict
+import gleam/int
 import gleam/io
 import gleam/list
-import gleam/result
+import gleam/option
 import gleam/set.{type Set}
+import gleam/string
 
 type Space {
   Start
@@ -121,5 +123,62 @@ pub fn pt_1(input: String) {
 }
 
 pub fn pt_2(input: String) {
-  todo as "part 2 not implemented"
+  let lines =
+    input
+    |> string.split("\n")
+
+  let yons =
+    lines
+    |> list.map(string.to_graphemes)
+    |> list.map(fn(line) {
+      line
+      |> list.index_map(fn(c, i) { #(i, c) })
+      |> list.filter_map(fn(t) {
+        case t.1 {
+          "^" -> Ok(t.0)
+          _ -> Error("")
+        }
+      })
+    })
+
+  let assert [#(start, _)] =
+    input
+    |> string.to_graphemes
+    |> list.index_map(fn(c, i) { #(i, c) })
+    |> list.filter(fn(c) { c.1 == "S" })
+
+  let d = [#(start, 1)] |> dict.from_list
+
+  yons
+  |> list.fold(d, fn(d, line) {
+    let split_beams =
+      d
+      |> dict.keys()
+      |> set.from_list
+      |> set.intersection(set.from_list(line))
+      |> set.to_list
+
+    let new_d = d
+    split_beams
+    |> list.fold(new_d, fn(new_d, beam) {
+      let assert Ok(val) = dict.get(d, beam)
+
+      new_d
+      |> dict.delete(beam)
+      |> dict.upsert(beam - 1, fn(res) {
+        case res {
+          option.Some(vv) -> val + vv
+          option.None -> val
+        }
+      })
+      |> dict.upsert(beam + 1, fn(res) {
+        case res {
+          option.Some(vv) -> val + vv
+          option.None -> val
+        }
+      })
+    })
+  })
+  |> dict.values
+  |> int.sum
 }
