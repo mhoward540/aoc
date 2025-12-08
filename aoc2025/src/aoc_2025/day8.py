@@ -1,6 +1,7 @@
 from itertools import combinations
 from math import sqrt
 from operator import ne
+from typing import Optional, Union
 
 Coord3d = tuple[float, float, float]
 Connection = tuple[Coord3d, Coord3d]
@@ -15,7 +16,7 @@ def dist(connection: Connection) -> float:
     return sqrt((a**2) + (b**2) + (c**2))
 
 
-def build_circuits(inp: str, iterations: int | None):
+def build_circuits(inp: str, iterations: Optional[int]):
     coords = []
     for line in inp.split("\n"):
         x, y, z = line.split(",")
@@ -63,6 +64,7 @@ def build_circuits(inp: str, iterations: int | None):
     res = sorted(circuits.values(), key=len, reverse=True)[:3]
     acc = 1
     for circuit in res:
+        print(circuit)
         acc *= len(circuit)
 
     return acc
@@ -73,5 +75,5 @@ if __name__ == "__main__":
     with open("input/2025/8.txt") as f:
         s = f.read()
 
-    print("Part 1:", build_circuits(s, 1000))
+    print("Part 1:", build_circuits(s, 10))
     print("Part 2:", build_circuits(s, None))
