@@ -3,9 +3,11 @@ from math import sqrt
 from operator import ne
 
 Coord3d = tuple[float, float, float]
+Connection = tuple[Coord3d, Coord3d]
 
 
-def dist(c1: Coord3d, c2: Coord3d) -> float:
+def dist(connection: Connection) -> float:
+    c1, c2 = connection
     a = c1[0] - c2[0]
     b = c1[1] - c2[1]
     c = c1[2] - c2[2]
@@ -13,7 +15,7 @@ def dist(c1: Coord3d, c2: Coord3d) -> float:
     return sqrt((a**2) + (b**2) + (c**2))
 
 
-def part1(inp: str):
+def part1(inp: str, iterations: int):
     coords = []
     for line in inp.split("\n"):
         x, y, z = line.split(",")
@@ -25,51 +27,37 @@ def part1(inp: str):
             )
         )
 
-    neighbor_map: dict[Coord3d, tuple[Coord3d, float]] = dict()
-    distances: list[tuple[float, Coord3d, Coord3d]] = []
-    for a, b in combinations(coords, 2):
-        distance = dist(a, b)
-        distances.append((distance, a, b))
-
-    distances.sort()
-    distances = distances[:1000]
+    connections: list[Connection] = [(a, b) for a, b in combinations(coords, 2)]
+    connections.sort(key=dist)
 
     circuits: dict[int, set[Coord3d]] = dict()
-    next_index = 0
-    for d, a, b in distances:
-        for k, v in circuits.items():
-            print(k, v)
-        print("")
-        print("")
-        print("")
-        matching_circuits = [
-            k for k, circuit in circuits.items() if a in circuit or b in circuit
-        ]
+    next_id = 0
+    for c in connections[:iterations]:
+        a, b = c
+        containing = [k for k, v in circuits.items() if a in v or b in v]
 
-        if len(matching_circuits) == 1:
-            i = matching_circuits[0]
-            circuits[i].add(a)
-            circuits[i].add(b)
-        elif len(matching_circuits) == 0:
-            circuits[next_index] = set([a, b])
-            next_index += 1
+        if len(containing) == 0:
+            circuits[next_id] = {a, b}
+            next_id += 1
+        elif len(containing) == 1:
+            id = containing[0]
+            circuits[id] |= {a, b}
         else:
             new_circuit = set()
-            for i in matching_circuits:
-                new_circuit = new_circuit | circuits[i]
+            for id in containing:
+                new_circuit |= circuits[id]
 
-            first = matching_circuits[0]
-            circuits[first] = new_circuit
-            for i in matching_circuits[1:]:
-                del circuits[i]
+            first_id = containing[0]
+            circuits[first_id] = new_circuit
+            for id in containing[1:]:
+                del circuits[id]
 
-    itr = sorted(circuits.values(), key=len, reverse=True)
-    print(itr[0])
-    print(len(itr[0]))
-    print(itr[1])
-    print(len(itr[1]))
-    print(itr[2])
-    print(len(itr[2]))
+    res = sorted(circuits.values(), key=len, reverse=True)[:3]
+    acc = 1
+    for circuit in res:
+        acc *= len(circuit)
+
+    return acc
 
 
 if __name__ == "__main__":
@@ -77,4 +65,4 @@ if __name__ == "__main__":
     with open("input/2025/8.txt") as f:
         s = f.read()
 
-    print(part1(s))
+    print(part1(s, 1000))
