@@ -15,7 +15,7 @@ def dist(connection: Connection) -> float:
     return sqrt((a**2) + (b**2) + (c**2))
 
 
-def part1(inp: str, iterations: int):
+def build_circuits(inp: str, iterations: int | None):
     coords = []
     for line in inp.split("\n"):
         x, y, z = line.split(",")
@@ -32,7 +32,8 @@ def part1(inp: str, iterations: int):
 
     circuits: dict[int, set[Coord3d]] = dict()
     next_id = 0
-    for c in connections[:iterations]:
+    end = iterations or len(connections)
+    for c in connections[:end]:
         a, b = c
         containing = [k for k, v in circuits.items() if a in v or b in v]
 
@@ -52,6 +53,13 @@ def part1(inp: str, iterations: int):
             for id in containing[1:]:
                 del circuits[id]
 
+        if (
+            iterations is None
+            and len(circuits) == 1
+            and len(circuits[0]) == len(coords)
+        ):
+            return int(a[0] * b[0])
+
     res = sorted(circuits.values(), key=len, reverse=True)[:3]
     acc = 1
     for circuit in res:
@@ -65,4 +73,5 @@ if __name__ == "__main__":
     with open("input/2025/8.txt") as f:
         s = f.read()
 
-    print(part1(s, 1000))
+    print("Part 1:", build_circuits(s, 1000))
+    print("Part 2:", build_circuits(s, None))
