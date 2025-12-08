@@ -3,6 +3,7 @@ import gleam/dict.{type Dict}
 import gleam/float
 import gleam/int
 import gleam/list
+import gleam/option
 import gleam/set.{type Set}
 import gleam/string
 
@@ -54,10 +55,22 @@ fn calc_result(circuits: Dict(Int, Set(Coord3d))) {
 fn build_circuits(
   connections: List(Connection),
   circuits: Dict(Int, Set(Coord3d)),
+  len_boxes: Int,
+  prev: Connection,
   next_id: Int,
   times: Int,
 ) {
-  use <- bool.lazy_guard(times == 0, fn() { calc_result(circuits) })
+  // if all circuits are now connected, return the connection which caused it
+  use <- bool.lazy_guard(
+    dict.size(circuits) == 1
+      && circuits
+    |> dict.values
+    |> list.map(set.size)
+    |> int.sum
+      == len_boxes,
+    fn() { #(calc_result(circuits), prev) },
+  )
+  use <- bool.lazy_guard(times == 0, fn() { #(calc_result(circuits), prev) })
   let assert [connection, ..rc] = connections
   let containing =
     circuits
@@ -99,28 +112,40 @@ fn build_circuits(
     }
   }
 
-  build_circuits(rc, circuits, next_id, times - 1)
+  build_circuits(rc, circuits, len_boxes, connection, next_id, times - 1)
 }
 
-fn do_calc(boxes: List(Coord3d), iters: Int) {
+fn do_calc(boxes: List(Coord3d), iters: option.Option(Int)) {
+  let zero = Coord3d(0.0, 0.0, 0.0)
   let connections =
     boxes
     |> list.combination_pairs
+
+  let iters = option.lazy_unwrap(iters, fn() { list.length(connections) + 1 })
 
   let a =
     connections
     |> list.sort(conn_compare)
 
-  build_circuits(a, dict.new(), 0, iters)
+  build_circuits(a, dict.new(), list.length(boxes), #(zero, zero), 0, iters)
 }
 
 pub fn pt_1(input: String) {
-  input
-  |> parse_input
-  // |> do_calc(10)
-  |> do_calc(1000)
+  {
+    input
+    |> parse_input
+    |> do_calc(option.Some(1000))
+  }.0
 }
 
-pub fn pt_2(_input: String) {
-  ""
+pub fn pt_2(input: String) {
+  let boxes =
+    input
+    |> parse_input
+
+  let #(_, #(c1, c2)) =
+    boxes
+    |> do_calc(option.None)
+
+  float.multiply(c1.x, c2.x) |> float.round
 }
