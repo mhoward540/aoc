@@ -3,8 +3,6 @@ import gleam/dict.{type Dict}
 import gleam/float
 import gleam/int
 import gleam/list
-import gleam/option
-import gleam/order
 import gleam/set.{type Set}
 import gleam/string
 
@@ -45,14 +43,11 @@ fn conn_compare(con1: Connection, con2: Connection) {
 }
 
 fn calc_result(circuits: Dict(Int, Set(Coord3d))) {
-  echo ""
-
   circuits
   |> dict.values
   |> list.map(fn(s) { #(set.size(s), s) })
   |> list.sort(fn(t1, t2) { int.compare(t2.0, t1.0) })
   |> list.take(3)
-  |> echo
   |> list.fold(1, fn(product, curr) { product * curr.0 })
 }
 
@@ -62,11 +57,8 @@ fn build_circuits(
   next_id: Int,
   times: Int,
 ) {
+  use <- bool.lazy_guard(times == 0, fn() { calc_result(circuits) })
   let assert [connection, ..rc] = connections
-  use <- bool.lazy_guard(times == 0, fn() {
-    // echo circuits
-    calc_result(circuits)
-  })
   let containing =
     circuits
     |> dict.to_list
@@ -91,6 +83,8 @@ fn build_circuits(
       let new_circuit =
         containing
         |> list.fold(set.new(), fn(c, conn) { c |> set.union(conn.1) })
+        |> set.insert(connection.0)
+        |> set.insert(connection.1)
 
       let assert [first_id, ..rest_ids] =
         containing
@@ -123,9 +117,10 @@ fn do_calc(boxes: List(Coord3d), iters: Int) {
 pub fn pt_1(input: String) {
   input
   |> parse_input
-  |> do_calc(10)
+  // |> do_calc(10)
+  |> do_calc(1000)
 }
 
-pub fn pt_2(input: String) {
-  todo as "part 2 not implemented"
+pub fn pt_2(_input: String) {
+  ""
 }
