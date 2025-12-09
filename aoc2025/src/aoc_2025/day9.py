@@ -1,5 +1,6 @@
 from collections import defaultdict
 from enum import Enum
+from itertools import combinations
 from typing import Optional, Set
 
 Coord = tuple[int, int]
@@ -62,23 +63,43 @@ def coords_for_area(c1: Coord, c2: Coord) -> Set[Coord]:
 
     return set((x, y) for x in range(min_x, max_x + 1) for y in range(min_y, max_y + 1))
 
+# TODO all_four_corners function
+
+def minmax(gen):
+    iterator = iter(gen)
+
+    try:
+        first = next(iterator)
+    except StopIteration:
+        return None, None  # Empty generator
+
+    min_val = max_val = first
+
+    for value in iterator:
+        if value < min_val:
+            min_val = value
+        elif value > max_val:
+            max_val = value
+
+    return min_val, max_val
+
 
 def part2(coords: list[Coord]):
+    print("0")
     space_map: dict[Coord, Space] = {}
+    # y index mapped to a list of tuples of [x index, space]
+    row_map: dict[int, list[tuple[int, Space]]] = defaultdict(list)
     max_x = -1
     max_y = -1
     for coord in coords:
-        max_x = max(max_x, coord[0])
-        max_y = max(max_y, coord[1])
+        x, y = coord
+        max_x = max(max_x, x)
+        max_y = max(max_y, y)
         space_map[coord] = Space.Red
-
-    for x in range(max_x + 1):
-        for y in range(max_y + 1):
-            coord = (x, y)
-            if not space_map.get(coord):
-                space_map[coord] = Space.Empty
+        row_map[y].append((x, Space.Red))
 
     # TODO chain iterables instead
+    print("1")
     for p1, p2 in list(zip(coords, coords[1:])) + [(coords[0], coords[-1])]:
         x_min = min(p1[0], p2[0])
         x_max = max(p1[0], p2[0])
@@ -90,35 +111,41 @@ def part2(coords: list[Coord]):
                 coord = (x, y)
                 if space_map.get(coord) != Space.Red:
                     space_map[coord] = Space.Green
+                    row_map[y].append((x, Space.Green))
 
     # so far we have all the red and green spaces on the boundaries correctly marked
     # now we have to fill the inner space of the shape
-    draw_spaces(space_map, max_x, max_y)
 
-    # y index mapped to a list of tuples of [x index, space]
-    row_map: dict[int, list[tuple[int, Space]]] = defaultdict(list)
+    # draw_spaces(space_map, max_x, max_y)
+    print("2")
 
-    for x in range(0, max_x + 1):
-        for y in range(0, max_y + 1):
-            coord = (x, y)
-            space = space_map[coord]
-            if space != Space.Empty:
-                row_map[y].append((x, space))
-
-    for y in range(0, max_y + 1):
-        row = row_map[y]
-        if not row:
-            continue
-
-        min_x = min(cell[0] for cell in row)
-        max_x = max(cell[0] for cell in row)
+    # TODO this is slow
+    # we can check 
+    for y, row in row_map.items():
+        min_x, max_x = minmax(cell[0] for cell in row)
+        if min_x is None or max_x is None:
+            raise ValueError("Shit this broek")
 
         for x in range(min_x + 1, max_x):
             space_map[(x, y)] = Space.Green
 
-    print("")
-    draw_spaces(space_map, max_x, max_y)
-    print("")
+    print("3")
+    # draw_spaces(space_map, max_x, max_y)
+
+    filled_spaces = set()
+    for row in row_map.values():
+        filled_spaces.update(set(row))
+
+    print("4")
+
+    max_area = -1
+    for c1, c2 in combinations(coords, 2):
+        ca = coords_for_area(c1, c2)
+        area = len(ca)
+        if area == len(ca & filled_spaces):
+            max_area = max(max_area, area)
+
+    return max_area
 
 
 if __name__ == "__main__":
