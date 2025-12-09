@@ -173,22 +173,24 @@ def has_inclusions(
 ) -> bool:
     min_x = min(p1[0], p2[0])
     min_y = min(p1[1], p2[1])
-    max_x = max(p1[1], p2[1])
-    max_y = min(p1[1], p2[1])
+    max_x = max(p1[0], p2[0])
+    max_y = max(p1[1], p2[1])
 
-    for pair in coord_pairs:
-        if p1[0] == p2[0]:
-            x = p1[0]
-            from_y, to_y = (p1[1], p2[1]) if p1[1] <= p2[1] else (p2[1], p1[1])
-            if not (x > min_x and x < max_x and from_y < max_y and to_y > min_y):
-                return False
+    for a, b in coord_pairs:
+        # vertical segment
+        if a[0] == b[0]:
+            x = a[0]
+            from_y, to_y = (a[1], b[1]) if a[1] <= b[1] else (b[1], a[1])
+            if (x > min_x and x < max_x) and (from_y < max_y and to_y > min_y):
+                return True
         else:
-            y = p1[1]
-            from_x, to_x = (p1[0], p2[0]) if p1[0] <= p2[0] else (p2[0], p1[0])
-            if not (y > min_y and y < max_y and from_x < max_x and to_x > min_x):
-                return False
+            # horizontal segment
+            y = a[1]
+            from_x, to_x = (a[0], b[0]) if a[0] <= b[0] else (b[0], a[0])
+            if (y > min_y and y < max_y) and (from_x < max_x and to_x > min_x):
+                return True
 
-    return True
+    return False
 
 
 def part2(coords: list[Coord]):
