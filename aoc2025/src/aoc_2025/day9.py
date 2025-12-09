@@ -99,7 +99,7 @@ def minmax(gen):
     return min_val, max_val
 
 
-def part2(coords: list[Coord]):
+def part3(coords: list[Coord]):
     print("0")
     space_map: dict[Coord, Space] = {}
     # y index mapped to a list of tuples of [x index, space]
@@ -166,6 +166,49 @@ def part2(coords: list[Coord]):
     print("5")
 
     return max_area
+
+
+def has_inclusions(
+    coord_pairs: list[tuple[Coord, Coord]], p1: Coord, p2: Coord
+) -> bool:
+    min_x = min(p1[0], p2[0])
+    min_y = min(p1[1], p2[1])
+    max_x = max(p1[1], p2[1])
+    max_y = min(p1[1], p2[1])
+
+    for pair in coord_pairs:
+        if p1[0] == p2[0]:
+            x = p1[0]
+            from_y, to_y = (p1[1], p2[1]) if p1[1] <= p2[1] else (p2[1], p1[1])
+            if not (x > min_x and x < max_x and from_y < max_y and to_y > min_y):
+                return False
+        else:
+            y = p1[1]
+            from_x, to_x = (p1[0], p2[0]) if p1[0] <= p2[0] else (p2[0], p1[0])
+            if not (y > min_y and y < max_y and from_x < max_x and to_x > min_x):
+                return False
+
+    return True
+
+
+def part2(coords: list[Coord]):
+    coord_pairs_help = [coords[-1]] + coords
+    coord_pairs = list(zip(coord_pairs_help, coord_pairs_help[1:]))
+
+    coords_with_area = sorted(
+        ((c1, c2, area(c1, c2)) for c1, c2 in combinations(coords, 2)),
+        key=lambda t: t[2],
+        reverse=True,
+    )
+
+    return next(
+        (
+            area
+            for x, y, area in coords_with_area
+            if not has_inclusions(coord_pairs, x, y)
+        ),
+        -1,
+    )
 
 
 if __name__ == "__main__":
