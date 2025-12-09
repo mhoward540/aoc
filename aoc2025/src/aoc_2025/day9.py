@@ -63,7 +63,22 @@ def coords_for_area(c1: Coord, c2: Coord) -> Set[Coord]:
 
     return set((x, y) for x in range(min_x, max_x + 1) for y in range(min_y, max_y + 1))
 
-# TODO all_four_corners function
+
+# Since there can be rectangle of length or width 1, this might return just 2 corners instead of 4
+def all_corners(c1: Coord, c2: Coord) -> Set[Coord]:
+    min_x = min(c1[0], c2[0])
+    max_x = max(c1[0], c2[0])
+
+    min_y = min(c1[1], c2[1])
+    max_y = max(c1[1], c2[1])
+
+    return {
+        (min_x, min_y),
+        (min_x, max_y),
+        (max_x, min_y),
+        (max_x, max_y),
+    }
+
 
 def minmax(gen):
     iterator = iter(gen)
@@ -120,30 +135,35 @@ def part2(coords: list[Coord]):
     print("2")
 
     # TODO this is slow
-    # we can check 
-    for y, row in row_map.items():
-        min_x, max_x = minmax(cell[0] for cell in row)
-        if min_x is None or max_x is None:
-            raise ValueError("Shit this broek")
+    # we can check that all 4 corners are in the shaded area
+    # if so then the whole area is in the shaded area
 
-        for x in range(min_x + 1, max_x):
-            space_map[(x, y)] = Space.Green
-
-    print("3")
+    # print("3")
     # draw_spaces(space_map, max_x, max_y)
 
-    filled_spaces = set()
-    for row in row_map.values():
-        filled_spaces.update(set(row))
+    for y in row_map.keys():
+        row_map[y].sort()
 
     print("4")
 
     max_area = -1
     for c1, c2 in combinations(coords, 2):
-        ca = coords_for_area(c1, c2)
-        area = len(ca)
-        if area == len(ca & filled_spaces):
-            max_area = max(max_area, area)
+        corners = all_corners(c1, c2)
+        all_in_bounds = True
+        for corner in corners:
+            curr_row = row_map[corner[1]]
+            low_bound, high_bound = curr_row[0][0], curr_row[-1][0]
+            all_in_bounds = all_in_bounds and (
+                corner[0] >= low_bound and corner[0] <= high_bound
+            )
+
+        if not all_in_bounds:
+            continue
+
+        print(corners)
+        max_area = max(max_area, area(c1, c2))
+
+    print("5")
 
     return max_area
 
@@ -155,4 +175,5 @@ if __name__ == "__main__":
 
     inp = parse_input(s)
     print("Part 1:", part1(inp))
+    # 4653414735 too high
     print("Part 2:", part2(inp))
