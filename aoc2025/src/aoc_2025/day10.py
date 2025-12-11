@@ -4,6 +4,8 @@ from functools import lru_cache, reduce
 from itertools import combinations
 from typing import Any, Deque
 
+_found = 0
+
 
 @dataclass
 class Entry:
@@ -57,7 +59,7 @@ def get_bits(n: int, length: int) -> tuple[int, ...]:
     for _ in range(length):
         out.append(n & 1)
         n >>= 1
-    return tuple(out[::-1])
+    return tuple(out)
 
 
 def add_tuples(t1: tuple[int, ...], t2: tuple[int, ...]) -> tuple[int, ...]:
@@ -73,7 +75,6 @@ def parse_input(inp: str):
         diagram, state_len = build_diagram(thing[0])
 
         joltages = build_joltages(thing[-1])
-        print(joltages)
 
         toggles = build_toggles(thing[1:-1])
 
@@ -107,7 +108,13 @@ def part1(entries: list[Entry]):
     return sum(l)
 
 
+def a_is_gt_b(a: tuple[int, ...], b: tuple[int, ...]) -> bool:
+    assert len(a) == len(b)
+    return any(n > t for n, t in zip(a, b))
+
+
 def handle_entry2(entry: Entry) -> int:
+    global _found
     zero = tuple([0 for _ in entry.joltages])
     # mask to check, curr_joltages, curr_xor, curr number of presses
     d: Deque[tuple[int, tuple[int, ...], int, int]] = deque(
@@ -117,19 +124,14 @@ def handle_entry2(entry: Entry) -> int:
     # bfs
     while d:
         t = d.popleft()
-        print(t)
+        # print(t)
         mask, curr_jolt, xor, num_presses = t
 
-        if curr_jolt == entry.joltages and xor == entry.final_state:
-            print("FOUND FOUND FOUND")
-            print("FOUND FOUND FOUND")
-            print("FOUND FOUND FOUND")
-            print("FOUND FOUND FOUND")
-            print("")
-            print("")
-
+        if curr_jolt == entry.joltages:
+            print("found", _found, num_presses, curr_jolt)
+            _found += 1
             return num_presses
-        elif curr_jolt >= entry.joltages:
+        elif a_is_gt_b(curr_jolt, entry.joltages):
             continue
         else:
             bits = get_bits(mask, entry.state_len)
