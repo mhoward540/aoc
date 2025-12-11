@@ -4,9 +4,11 @@ from functools import lru_cache, reduce
 from itertools import combinations
 from typing import Any, Deque
 
+PathMap = dict[str, list[str]]
+
 
 def parse_input(s: str):
-    d: dict[str, list[str]] = {}
+    d: PathMap = {}
     for line in s.split("\n"):
         start, nodes = line.split(": ")
 
@@ -17,21 +19,28 @@ def parse_input(s: str):
     return d
 
 
-def part1(d: dict[str, list[str]]):
-    paths = 0
+def path_from(
+    d: PathMap, start: str, end: str, through: None | list[str]
+) -> tuple[list[str], int]:
+    path_count = 0
+    paths = []
 
-    to_visit = deque(["you"])
+    to_visit = deque([start])
 
     while to_visit:
         node = to_visit.popleft()
 
-        if node == "out":
-            paths += 1
+        if node == end or d.get(node) is None:
+            path_count += 1
             continue
 
         to_visit.extend(d[node])
 
-    return paths
+    return paths, path_count
+
+
+def part1(d: PathMap):
+    return path_from(d, "you", "out", [])
 
 
 if __name__ == "__main__":
