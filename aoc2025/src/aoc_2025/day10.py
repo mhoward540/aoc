@@ -2,9 +2,7 @@ from collections import deque
 from dataclasses import dataclass
 from functools import lru_cache, reduce
 from itertools import combinations
-from typing import Any, Deque
-
-_found = 0
+from typing import Any, TypeVar
 
 
 @dataclass
@@ -83,77 +81,35 @@ def parse_input(inp: str):
     return entries
 
 
-def all_combos(lst: list[Any]) -> list[list[Any]]:
-    all_combinations = []
-    for r in range(1, len(lst) + 1):
-        all_combinations.extend(combinations(lst, r))
-
-    return all_combinations
+T = TypeVar("T")
 
 
-def handle_entry(entry: Entry):
-    min_presses = 9999999999999
+def all_combos(lst: list[T]):
+    """
+    Combinations of all possible lengths for given list
+    """
+    return (list(c) for r in range(1, len(lst) + 1) for c in combinations(lst, r))
+
+
+def min_presses(entry: Entry):
+    min_presses = float("inf")
+    min_press_combo: list[int] = []
     for combo in all_combos(entry.possible_press_masks):
         res = reduce(lambda a, b: a ^ b, combo)
-        if res == entry.final_state:
-            min_presses = min(min_presses, len(combo))
+        if res == entry.final_state and len(combo) < min_presses:
+            min_presses = len(combo)
+            min_press_combo = combo
 
-    return min_presses
+    return min_presses, min_press_combo
 
 
-# 10000000000504 too high
 def part1(entries: list[Entry]):
-    l = [handle_entry(entry) for entry in entries]
-    print(l)
-    return sum(l)
-
-
-def a_is_gt_b(a: tuple[int, ...], b: tuple[int, ...]) -> bool:
-    assert len(a) == len(b)
-    return any(n > t for n, t in zip(a, b))
-
-
-def handle_entry2(entry: Entry) -> int:
-    global _found
-    zero = tuple([0 for _ in entry.joltages])
-    # mask to check, curr_joltages, curr_xor, curr number of presses
-    d: Deque[tuple[int, tuple[int, ...], int, int]] = deque(
-        [(mask, zero, 0, 0) for mask in entry.possible_press_masks]
-    )
-
-    # bfs
-    while d:
-        t = d.popleft()
-        # print(t)
-        mask, curr_jolt, xor, num_presses = t
-
-        if curr_jolt == entry.joltages:
-            print("found", _found, num_presses, curr_jolt)
-            _found += 1
-            return num_presses
-        elif a_is_gt_b(curr_jolt, entry.joltages):
-            continue
-        else:
-            bits = get_bits(mask, entry.state_len)
-            new_jolt = add_tuples(bits, curr_jolt)
-            new_xor = mask ^ xor
-
-            deque.extend(
-                d,
-                (
-                    (next_mask, new_jolt, new_xor, num_presses + 1)
-                    for next_mask in entry.possible_press_masks
-                    if next_mask != mask
-                ),
-            )
-
-    return -1
+    l = [min_presses(entry) for entry in entries]
+    return sum(presses for presses, _ in l)
 
 
 def part2(entries: list[Entry]):
-    l = [handle_entry2(entry) for entry in entries]
-    print(l)
-    return sum(l)
+    pass
 
 
 if __name__ == "__main__":
